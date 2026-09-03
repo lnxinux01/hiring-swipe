@@ -216,6 +216,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
   touch-action:none;
 }
 .card{
+  touch-action:none;
   position:absolute;inset:0;background:var(--panel);border-radius:var(--r);
   box-shadow:var(--sh-card);border:1px solid var(--line);
   will-change:transform,opacity;transform:translate3d(0,0,0);
@@ -361,6 +362,7 @@ kbd{font:inherit;font-size:11px;border:1px solid var(--line);border-radius:5px;p
 #fsheet.on .spanel{transform:translateX(0)}
 #ssheet .spanel{position:static;transform:none;border-radius:18px;width:min(500px,94vw);max-height:82dvh}
 #sslist .sec.ss-star{border-color:var(--ink);box-shadow:inset 3px 0 0 var(--ink)}
+#sslist .sec.dragover{box-shadow:inset 0 2px 0 var(--ink)}
 #sslist .sec.ss-yes{background:var(--sunk);border-color:var(--line2)}
 #sslist .sec.ss-yes .bv{font-weight:500;color:var(--ink2)}
 .ss-st{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
@@ -1352,6 +1354,7 @@ function paint(){
   top.el.querySelector('.s-star').style.opacity = up?py:0;
 
 }
+stage.addEventListener('touchmove',e=>{ if(drag) e.preventDefault(); },{passive:false});
 stage.addEventListener('pointerup',end); stage.addEventListener('pointercancel',end);
 function end(e){
   if(!drag||e.pointerId!==drag.id) return;
@@ -2058,40 +2061,16 @@ function render(){
     ${pr<0.25?'<b style="color:var(--pass)">卡掉了四分之三以上 —— 确认每条都是「没有就不能干」。</b>':''}
     ${S.F.age[0]>18||S.F.age[1]<63?'<br>年龄别写进对外 JD，换成年限带宽。':''}</div></div>` : '';
 
-  const starred=S.decisions.filter(d=>d.v==='star').map(d=>d.card);
-  // 约面名单：可拖动排优先级、展开看简历、备注亮点
-  S.starOrder=(S.starOrder||[]).filter(n=>starred.some(c=>c.name===n));
-  for(const c of starred) if(!S.starOrder.includes(c.name)) S.starOrder.push(c.name);
-  S.starNotes=S.starNotes||{};
-  const ordered=S.starOrder.map(n=>starred.find(c=>c.name===n));
-  const starHTML = (REAL()&&ordered.length) ? `<div class="rcard"><div class="rh">✦ 直接约面 · 拖动排优先级</div>
-    ${ordered.map((c,i)=>`<div class="srow" draggable="true" data-sn="${c.name}">
-      <div class="sr-head">
-        <span class="sr-grip">⠿</span><span class="sr-rank">${i+1}</span>
-        <span class="sr-name">${c.name}</span>
-        <span class="sr-meta">${c.school} · ${c.exp1.co}</span>
-        <span class="sr-chev">⌄</span>
-      </div>
-      <div class="sr-body">
-        <div class="sr-cv">${(c.raw||'').split('\n').slice(0,7).join('\n').replace(/[<>&]/g,m=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[m]))}</div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input class="sr-note" data-sn="${c.name}" placeholder="亮点备注：为什么点名要他"
-            value="${(S.starNotes[c.name]||'').replace(/"/g,'&quot;')}">
-          <button class="tbtn sr-open" data-sn="${c.name}">全简历</button>
-        </div>
-      </div>
-    </div>`).join('')}</div>` : '';
-
   if(!strong.length&&!plus.length&&!out.length){
     $('#rwrap').innerHTML=`
-      <h1 class="rtitle">${S.role} · ${S.year}</h1>
+      <h1 class="rtitle">${S.role} · ${S.year}<button class="tbtn rstar" style="float:right;font-size:13px">约面清单 ${$('#starcount').textContent}</button></h1>
       <div class="conf"><span class="dot" style="background:${conf[1]}"></span>${conf[0]} · 判断了 ${A.n} 人（${A.pos} 正 / ${A.neg} 负）</div>
-      ${starHTML}
       <div class="rcard"><div class="ev" style="font-size:14px">还没滑出稳定偏好。</div></div>
       <div class="rowbtns">
         <button class="gh" id="more">继续滑</button>
         <button class="gh alt" id="restart">换个岗位</button>
       </div>`;
+    $$('#rwrap .rstar').forEach(b=>b.onclick=()=>{ renderStarSheet(); $('#ssheet').classList.add('on'); });
     $('#more').onclick=()=>{ show('deck'); };
     $('#restart').onclick=()=>location.reload();
     return;
@@ -2103,10 +2082,9 @@ function render(){
     <div class="bar"><i style="width:${(x.l.rate*100).toFixed(0)}%;background:${color}"></i></div></div>`;
 
   $('#rwrap').innerHTML=`
-    <h1 class="rtitle">${S.role} · ${S.year}</h1>
+    <h1 class="rtitle">${S.role} · ${S.year}<button class="tbtn rstar" style="float:right;font-size:13px">约面清单 ${$('#starcount').textContent}</button></h1>
     <div class="conf"><span class="dot" style="background:${conf[1]}"></span>${conf[0]} · 判断了 ${A.n} 人（${A.pos} 正 / ${A.neg} 负）</div>
 
-    ${starHTML}
     ${hardHTML}
     ${strong.length?`<div class="rcard"><div class="rh"><svg class="sparkle" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c.5 6.3 5.2 11 11.5 11.5v1C17.2 13 12.5 17.7 12 24h-1C10.5 17.7 5.8 13 -.5 12.5v-1C5.8 11 10.5 6.3 11 0h1z"/></svg> 必要条件</div>${strong.map(x=>row(x,'var(--pick)')).join('')}</div>`:''}
     ${plus.length?`<div class="rcard"><div class="rh">加分项</div>${plus.map(x=>row(x,'var(--ink)')).join('')}</div>`:''}
@@ -2171,30 +2149,7 @@ function render(){
     btn.textContent='AI 成文'; btn.disabled=false;
   };
 
-  // 约面名单交互：拖排 / 展开 / 备注
-  let dragSN=null;
-  $$('#rwrap .srow').forEach(row=>{
-    row.addEventListener('dragstart',e=>{ dragSN=row.dataset.sn; e.dataTransfer.effectAllowed='move'; });
-    row.addEventListener('dragover',e=>{ e.preventDefault(); row.classList.add('dragover'); });
-    row.addEventListener('dragleave',()=>row.classList.remove('dragover'));
-    row.addEventListener('drop',e=>{
-      e.preventDefault(); row.classList.remove('dragover');
-      if(!dragSN||dragSN===row.dataset.sn) return;
-      const o=S.starOrder, from=o.indexOf(dragSN), to=o.indexOf(row.dataset.sn);
-      o.splice(to,0,o.splice(from,1)[0]);
-      render(); window.scrollTo(0,0);
-    });
-    row.querySelector('.sr-head').addEventListener('click',()=>row.classList.toggle('open'));
-  });
-  $$('#rwrap .sr-note').forEach(inp=>{
-    inp.addEventListener('click',e=>e.stopPropagation());
-    inp.addEventListener('input',e=>{ S.starNotes[inp.dataset.sn]=inp.value; });
-  });
-  $$('#rwrap .sr-open').forEach(b=>b.onclick=e=>{
-    e.stopPropagation();
-    const c=S.decisions.find(d=>d.card.name===b.dataset.sn)?.card;
-    if(c) openSheet(c);
-  });
+  $$('#rwrap .rstar').forEach(b=>b.onclick=()=>{ renderStarSheet(); $('#ssheet').classList.add('on'); });
   $('#tocv').onclick=openCV;
   autoSavePreset();
   $('#more').onclick=()=>{ show('deck'); };
@@ -3777,14 +3732,18 @@ function renderStarSheet(){
     ...S.decisions.filter(d=>d.v==='yes').map(d=>d.card),
     ...(S.importedYes||[]).map(r=>({name:r.n, school:r.sc, exp1:{co:r.co}, _imp:true}))
   ];
-  S.starStatus=S.starStatus||{};
-  const starRow=c=>{
+  S.starStatus=S.starStatus||{}; S.starNotes=S.starNotes||{};
+  S.starOrder=(S.starOrder||[]).filter(n=>stars.some(c=>c.name===n));
+  for(const c of stars) if(!S.starOrder.includes(c.name)) S.starOrder.push(c.name);
+  const orderedStars=S.starOrder.map(n=>stars.find(c=>c.name===n));
+  const starRow=(c,i)=>{
     const st=S.starStatus[c.name]||'待约';
-    return `<div class="sec ss-star" data-ssn="${c.name}" style="cursor:pointer">
+    return `<div class="sec ss-star" data-ssn="${c.name}" draggable="true" style="cursor:pointer">
       <div style="display:flex;gap:10px;align-items:center">
         <div style="flex:1;min-width:0">
-          <div class="bv" style="font-weight:600;font-size:15.5px"><svg class="sparkle" viewBox="0 0 24 24" style="width:12px;height:12px;margin-right:5px"><path d="M12 0c.5 6.3 5.2 11 11.5 11.5v1C17.2 13 12.5 17.7 12 24h-1C10.5 17.7 5.8 13 -.5 12.5v-1C5.8 11 10.5 6.3 11 0h1z"/></svg>${c.name}<span style="color:var(--ink3);font-weight:400;font-size:13px"> · ${c.school} · ${c.exp1.co}</span></div>
-          ${(S.starNotes||{})[c.name]?`<div class="bd">${S.starNotes[c.name]}</div>`:''}
+          <div class="bv" style="font-weight:600;font-size:15.5px"><span class="sr-grip" style="cursor:grab;color:var(--ink4);margin-right:6px">⠿</span><span style="font-family:var(--serif);font-size:14px;color:var(--ink3);margin-right:7px">${i+1}</span>${c.name}<span style="color:var(--ink3);font-weight:400;font-size:13px"> · ${c.school} · ${c.exp1.co}</span></div>
+          <input class="sr-note ssn-note" data-n="${c.name}" placeholder="亮点备注" style="margin-top:7px"
+            value="${(S.starNotes[c.name]||'').replace(/"/g,'&quot;')}">
         </div>
         ${c._imp?`<button class="tbtn ss-rm" data-n="${c.name}">移除</button>`:`<button class="tbtn ss-down" data-n="${c.name}">移到可聊</button>`}
       </div>
@@ -3793,12 +3752,28 @@ function renderStarSheet(){
     </div>`;
   };
   $('#sslist').innerHTML=
-    `<div class="rh" style="font-size:13px;color:var(--ink)">✦ 直接约面</div>`
-    +(stars.map(starRow).join('')
+    `<div class="rh" style="font-size:13px;color:var(--ink)">✦ 直接约面${orderedStars.length>1?' · 拖动排优先级':''}</div>`
+    +(orderedStars.map(starRow).join('')
       ||'<div class="ev" style="margin-bottom:8px;font-size:14px">还没有，上滑或点 ✦ 选中。</div>')
     +`<div class="rh" style="margin-top:14px;font-size:13px;color:var(--ink)">✓ 可以聊</div>`
     +(yes.map(c=>row(c,`<button class="tbtn ss-up" data-n="${c.name}">✦ 约面</button>`)).join('')
       ||'<div class="ev" style="font-size:14px">还没有。</div>');
+  let dsn=null;
+  $('#sslist').querySelectorAll('.ss-star[draggable]').forEach(r2=>{
+    r2.addEventListener('dragstart',e=>{ dsn=r2.dataset.ssn; e.dataTransfer.effectAllowed='move'; });
+    r2.addEventListener('dragover',e=>{ e.preventDefault(); r2.classList.add('dragover'); });
+    r2.addEventListener('dragleave',()=>r2.classList.remove('dragover'));
+    r2.addEventListener('drop',e=>{
+      e.preventDefault(); r2.classList.remove('dragover');
+      if(!dsn||dsn===r2.dataset.ssn) return;
+      const o=S.starOrder, from=o.indexOf(dsn), to=o.indexOf(r2.dataset.ssn);
+      o.splice(to,0,o.splice(from,1)[0]); renderStarSheet();
+    });
+  });
+  $('#sslist').querySelectorAll('.ssn-note').forEach(inp=>{
+    for(const ev of ['click','pointerdown']) inp.addEventListener(ev,e=>e.stopPropagation());
+    inp.addEventListener('input',()=>{ S.starNotes[inp.dataset.n]=inp.value; });
+  });
 }
 $('#starbtn').onclick=()=>{ renderStarSheet(); $('#ssheet').classList.add('on'); };
 $('#sslist').addEventListener('click',e=>{
@@ -3823,8 +3798,10 @@ $('#sslist').addEventListener('click',e=>{
   }
 });
 $('#ss-copy').onclick=async()=>{
-  const st=[...S.decisions.filter(d=>d.v==='star').map(d=>d.card),
+  let st=[...S.decisions.filter(d=>d.v==='star').map(d=>d.card),
             ...(S.importedStars||[]).map(r=>({name:r.n, school:r.sc, exp1:{co:r.co}}))];
+  if(S.starOrder&&S.starOrder.length)
+    st=st.slice().sort((a,b)=>S.starOrder.indexOf(a.name)-S.starOrder.indexOf(b.name));
   const ys=[...S.decisions.filter(d=>d.v==='yes').map(d=>d.card),
             ...(S.importedYes||[]).map(r=>({name:r.n, school:r.sc, exp1:{co:r.co}}))];
   const t=`【约面清单 · ${$('#jobtag').textContent.split('　')[0]}】\n\n直接约面：\n`
