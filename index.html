@@ -351,7 +351,8 @@ kbd{font:inherit;font-size:11px;border:1px solid var(--line);border-radius:5px;p
   background:rgba(21,19,15,.34);
 }
 .sheet.on{display:block}
-#ssheet.on{display:grid;place-items:center;padding:20px}
+#ssheet.on,#jsheet.mid.on{display:grid;place-items:center;padding:20px}
+#jsheet.mid .spanel{position:static;transform:none;border-radius:18px;width:min(560px,94vw);max-height:82dvh}
 #fsheet .spanel{
   left:0;bottom:0;top:0;transform:translateX(-100%);
   width:min(420px,94vw);max-height:none;height:100dvh;
@@ -2905,7 +2906,7 @@ function renderPresets(){
   fl.style.display='flex'; fl.style.alignItems='baseline';
   fl.innerHTML = `筛选历史${
       all.length?`<button class="linkish" id="pswipe" style="display:inline;margin:0 0 0 auto;font-size:12px;color:var(--ink4);white-space:nowrap">清除全部历史</button>`:''}`;
-  const pw=$('#pswipe'); if(pw) pw.onclick=()=>{ if(confirm('清除所有筛选历史？')){ saveAll([]); renderPresets(); } };
+  const pw=$('#pswipe'); if(pw) pw.onclick=()=>{ if(confirm('清除所有筛选历史？')){ saveAll([]); renderPresets(); $('#start').disabled=!(S.jobLocked||presetStartable()); } };
 }
 /* 简历库是已接入的数据库 —— 内容按当前岗位从库里取，带来源标签 */
 const SRCMAP={
@@ -2974,8 +2975,9 @@ function srcCounts(total){
   const L=SRCS(), w=[4,3,2,1,1].slice(0,L.length), tot=w.reduce((a,b)=>a+b,0);
   const o={}; L.forEach(([k],i)=>o[k]=Math.round(total*w[i]/tot)); return o;
 }
+const presetStartable=()=>chosenPresets().some(p=>p.scope!=='general'&&p.role);
 function renderMode(){
-  $('#start').disabled=!S.jobLocked;
+  $('#start').disabled=!(S.jobLocked||presetStartable());
   $('#f-mode').innerHTML=POOLMODES.map(([k,l])=>
     `<button class="chip" data-mode="${k}" aria-pressed="${S.poolMode===k}">${l}</button>`).join('');
   const m=POOLMODES.find(x=>x[0]===S.poolMode);
@@ -3028,19 +3030,20 @@ $('#presets').addEventListener('click',e=>{
         for(const r of st) if(!S.importedStars.some(x=>x.n===r.n)){ S.importedStars.push(r); add++; }
         tick&&tick();
         $('#js-import').textContent=add?`已导入 ${add} 人`:'都已在清单里';
-        setTimeout(()=>{ $('#js-import').textContent='导入待约'; $('#jsheet').classList.remove('on'); },900);
+        setTimeout(()=>{ $('#js-import').textContent='导入待约'; $('#jsheet').classList.remove('on','mid'); },900);
       };
-      $('#jsheet').classList.add('on');
+      $('#jsheet').classList.add('on','mid');
     }
     return;
   }
   const b=e.target.closest('.chip'); if(!b) return;
   b.setAttribute('aria-pressed', b.getAttribute('aria-pressed')!=='true');
+  $('#start').disabled=!(S.jobLocked||presetStartable());
 });
-const chosenPresets=()=>{
+function chosenPresets(){
   const ids=[...$('#presets').querySelectorAll('[aria-pressed="true"]')].map(b=>+b.dataset.ps);
   return loadAll().filter(p=>ids.includes(p.id));
-};
+}
 renderPresets();
 
 /* ==================================================================
@@ -3451,7 +3454,7 @@ function pickJob(j){
   } else {
     updateConf(detectSel(j.t));                      // 只有标题：定位选择
   }
-  $('#jsheet').classList.remove('on');
+  $('#jsheet').classList.remove('on','mid');
 }
 function toggleJdView(j){
   if(!j) return;
@@ -3467,8 +3470,8 @@ function toggleJdView(j){
   $('#jsbody').textContent=JDS[j.jd][1];
   $('#jsheet').classList.add('on');
 }
-$('#js-close').onclick=()=>$('#jsheet').classList.remove('on');
-$('#jsheet').addEventListener('pointerdown',e=>{ if(e.target.id==='jsheet') $('#jsheet').classList.remove('on'); });
+$('#js-close').onclick=e=>{$('#jsheet').classList.remove('on','mid')};
+$('#jsheet').addEventListener('pointerdown',e=>{ if(e.target.id==='jsheet') $('#jsheet').classList.remove('on','mid'); });
 let jsT; $('#jsbody').addEventListener('input',()=>{
   clearTimeout(jsT); jsT=setTimeout(()=>parseJDText($('#jsbody').innerText.trim()),450);
 });
@@ -3695,8 +3698,12 @@ $('#jdtoggle').onclick=()=>{
 };
 
 $('#start').onclick=()=>{
-  if(!S.jobLocked) return;
   const chosen=chosenPresets();
+  if(!S.jobLocked){
+    const ps=chosen.find(p=>p.scope!=='general'&&p.role);
+    if(!ps) return;
+    S.role=ps.role; S.year=ps.year||S.year; S.tk=ps.tk||S.tk;
+  }
   S.F=S.F||blankF();
   S.Fdraft=JSON.parse(JSON.stringify(S.F)); S.preNotes=[];
   S.deck0=buildDeck(S.tk,null,S.role,S.year);                          // deck0 = 未筛选的参考池，用来算真实通过率
