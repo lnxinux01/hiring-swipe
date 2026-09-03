@@ -712,7 +712,7 @@ kbd{font:inherit;font-size:11px;border:1px solid var(--line);border-radius:5px;p
       <button class="tbtn" id="js-import" style="display:none">导入待约</button>
       <button class="tbtn" id="js-close">收起</button>
     </div>
-    <div style="font-size:12px;color:var(--ink4);margin-bottom:8px" id="js-tip">可直接编辑，自动重读。识别「3 年以上」「985/211」「Python」这类要求。</div>
+    <div style="font-size:12px;color:var(--ink4);margin-bottom:8px" id="js-tip">可直接编辑，自动重读。识别「985/211」「Python」「英语流利」这类要求。</div>
     <div id="jsbody" contenteditable="true" spellcheck="false" style="white-space:pre-wrap;font-size:13px;line-height:1.8;color:var(--ink2);outline:none"></div>
   </div>
 </div>
@@ -1297,9 +1297,12 @@ function fill(){
     S.stack.push({el,card:c});
   }
   $('#empty').style.display = S.stack.length? 'none':'grid';
-  if(!S.stack.length && S.decisions.length>=10 && !S.autoDone){
-    S.autoDone=true;                                  // 滑完自动出画像
-    setTimeout(()=>{ render(); show('result'); window.scrollTo(0,0); },500);
+  if(!S.stack.length && S.decisions.length>=10 && !S.autoDone && portraitReady()){
+    S.autoDone=true;                                  // 滑完自动出画像（没就绪就停在空状态让用户选）
+    setTimeout(()=>{
+      if(S.stack.length||S.pool.length){ S.autoDone=false; return; }   // 期间点了扩大范围就不跳
+      render(); show('result'); window.scrollTo(0,0);
+    },500);
   }
 }
 
@@ -1443,10 +1446,6 @@ function tick(){
 
 /* ---- 「有没有在变好」：模型每张卡先猜、你再滑，猜中率就是答案 ---- */
 function learnUI(){
-  if(S.flash){ const w=$('#lwhy'); w.innerHTML=S.flash; w.style.display='block';
-    const now0=hitRate(10), st0=$('#lstat'), fl0=$('#lfill'), nm0=$('#lnum');
-    if(now0&&now0.n>=5){ nm0.textContent=`${now0.hit}/${now0.n}`; fl0.style.width=(now0.r*100)+'%'; }
-    return; }
   const now=hitRate(10);
   const st=$('#lstat'), fl=$('#lfill'), nm=$('#lnum'), why=$('#lwhy');
   // 条 = 画像就绪度，与出画像解锁严格同步；满条即可出
@@ -1459,6 +1458,7 @@ function learnUI(){
   fl.style.width=(rd*100)+'%';
   fl.style.background = ready?'var(--pick)':'var(--ink)';
   nm.textContent = ready ? '✓ 可出' : Math.round(rd*100)+'%';
+  if(!ready) S.ck=false;                       // ready 回落就重新武装，下次条满仍然必弹
   // 画像就绪 → 自动弹消息框，不等用户来点；与条上「✓ 可出」同一把尺，条满必弹
   if(!S.ck && ready){
     const A0=analyze(false);
@@ -1479,16 +1479,19 @@ function learnUI(){
         close();
         const before=S.pool.length;
         const scored=S.pool.map(c=>({c,p:predictP(c)??.5})).sort((a,b)=>b.p-a.p);
-        S.pool=scored.filter(x=>x.p>=.55).map(x=>x.c);
-        if(S.pool.length<10) S.pool=scored.slice(0,10).map(x=>x.c);
-        why.innerHTML=`筛掉 ${before-S.pool.length} 份低分的，剩 ${S.pool.length} 份接近画像的。`;
-        why.style.display='block';
-        setTimeout(()=>{why.style.display='none'},2600);
+        let kept=scored.filter(x=>x.p>=.55).map(x=>x.c);
+        if(kept.length<10) kept=scored.slice(0,10).map(x=>x.c);
+        S.pool=kept;
+        S.deck=[...S.decisions.map(d=>d.card),...S.stack.map(x=>x.card),...kept];   // 低分卡真正出堆；反悔用「扩大范围」
+        if(REAL()) $('#jobtag').textContent=$('#jobtag').textContent.replace(/　\d+\/\d+$/,`　${S.deck.length}/${S.realTotal}`);
+        S.flash=`筛掉 ${before-S.pool.length} 份低分的，剩 ${S.pool.length} 份接近画像的。`;
+        setTimeout(()=>{ S.flash=null; learnUI(); },2600);
         tick();
       };
       setTimeout(()=>{ if($('#toast').classList.contains('on')) close(); }, 12000);
     }
   }
+  if(S.flash){ why.innerHTML=S.flash; why.style.display='block'; return; }
   if(!now||now.n<5){ why.style.display='none'; return; }
   const r=now.r;
 
@@ -1525,11 +1528,11 @@ function learnUI(){
     why.innerHTML=`${P0} 正 / ${N0} 负 —— 没有对比，出不了画像。${P0>N0?'左滑几个没那么想面的。':'右滑几个愿意聊 20 分钟的。'}`;
     why.style.display='block'; return;
   }
-  if(n>=12 && r<.6){
+  if(!ready && n>=12 && r<.6){
     why.innerHTML=`猜不准 —— 还没看懂你在挑什么。点开简历，在打动你的那段上 ⊕ / ⊖。`;
     why.style.display='block'; return;
   }
-  if(n>=16 && Object.values(analyze(false).out).every(d=>d.power<2.2)){   // 标定：真信号 2.3+
+  if(!ready && n>=16 && Object.values(analyze(false).out).every(d=>d.power<2.2)){   // 标定：真信号 2.3+
     why.innerHTML=`还没有稳定信号 —— 同类人给过相反判断。再滑一轮，或把某条<button id="w2f">设成硬性条件</button>。`;
     why.style.display='block';
     const w=$('#w2f'); if(w) w.onclick=()=>$('#filterbtn').click();
@@ -1791,9 +1794,10 @@ function applyThought(t){
   let m=t.match(/(\d+)\s*个?(月|年)/);
   if(m && /实习|经历|经验|年限/.test(t) && /不接受|不要|不看|排除|至少|不少于|以上|起步/.test(t)){
     const n=+m[1];
-    const lo=/不超过|少于|不足|小于/.test(t) ? n+1 : n;   // 「不超过3个月的不要」⇒ ≥4
+    let lo=/不超过|少于|不足|小于/.test(t) ? n+1 : n;   // 「不超过3个月的不要」⇒ ≥4
+    if(m[2]==='年'&&!SOC()) lo*=12;                     // 实习/校招池的单位是月
     S.F.months[0]=Math.max(S.F.months[0],lo);
-    acts.push(`硬性条件：${SOC()?'工作年限':'实习总时长'} ≥ ${S.F.months[0]} ${m[2]==='年'||SOC()?'年':'个月'}`);
+    acts.push(`硬性条件：${SOC()?'工作年限':'实习总时长'} ≥ ${S.F.months[0]} ${SOC()?'年':'个月'}`);
   }
   // 2) 放宽：「实习经验好的话，院校条件可以放宽」
   if(/放宽|不卡|不限了|无所谓|不重要|不 ?care/i.test(t)){
@@ -2101,7 +2105,7 @@ function render(){
     ${out.length?`<div class="rcard"><div class="rh">不要什么</div>${out.map(x=>row(x,'var(--pass)')).join('')}</div>`:''}
 
     ${schoolHot?`<div class="rcard warn"><div class="rh" style="color:var(--pass)">⚠︎ 学校信号异常</div>
-      <div class="ev" style="font-size:13.5px;color:var(--ink2)">学校是<b>随机分配</b>的对照变量，本不该有规律，却是全模型最强信号（碰巧概率 ${(schoolDim.p*100).toFixed(0)}%）—— 你在无意识按学校筛人。<br><br>接下来会发几张只差学校的对照卡，继续滑就能分清。</div></div>`:''}
+      <div class="ev" style="font-size:13.5px;color:var(--ink2)">学校是<b>随机分配</b>的对照变量，本不该有规律，却是全模型最强信号（碰巧概率 ${(schoolDim.p*100).toFixed(0)}%）—— 你在无意识按学校筛人。</div></div>`:''}
 
     ${weak.length?`<div class="rcard"><div class="rh">还没看出规律</div><div class="ev" style="font-size:13.5px">${weak.join('、')} —— 继续滑会自动做对照。
       ${cfnd.length?`<br><br><b>注意：${cfnd.join('、')}</b> 单看有规律，控制其他维度后消失 —— 只是和真信号相关，别写进标准。`:''}</div></div>`:''}
@@ -2486,7 +2490,7 @@ $('#memsec').addEventListener('click',e=>{
   const hen=e.target.closest('[data-hen]');
   if(hen){
     const h=loadMemJob().find(x=>x.text===hen.dataset.hen);
-    if(h){ S.notes.push({...h}); refit(); saveMemNow(); reflowPool(); renderMem(); renderNotes(); }
+    if(h){ S.notes.push({...h}); refit(); saveMemNow(); reflowPool(); renderFilters(); renderMem(); renderNotes(); }
     return;
   }
   const hdel=e.target.closest('[data-hdel]');
@@ -3574,14 +3578,13 @@ function parseJDText(jd){
   else if(/英语|CET|六级/.test(jd)){ F.lang=['en_daily']; F.langText='英语可日常'; got.push(['语言','英语可日常']); }
   const ag=jd.match(/(\d{2})\s*[-–~到]\s*(\d{2})\s*岁|(\d{2})\s*岁以下/);
   if(ag){ F.age=ag[3]?[18,+ag[3]]:[+ag[1],+ag[2]]; got.push(['年龄',`${F.age[0]}–${F.age[1]} 岁`]); }
-  S.jdF=F;
-  S.F=JSON.parse(JSON.stringify(F));      // JD 的硬条件当场生效，后续收窄在其上叠加
-  S.Fdraft=JSON.parse(JSON.stringify(F));
-
-  if(jd.length<50){
+  if(jd.length<50){                       // 不足 50 字：只提示，不动任何已生效条件
     $('#jdout').innerHTML=`<div class="ev" style="color:var(--warn)">信息太少，请补充职责和要求（50 字以上）。</div>`;
     return;
   }
+  S.jdF=F;
+  S.F=JSON.parse(JSON.stringify(F));      // JD 的硬条件当场生效，后续收窄在其上叠加
+  S.Fdraft=JSON.parse(JSON.stringify(F));
   // 够长就当真 JD：直接锁岗载入简历池。识别不出的职能/阶段用当前值兜底，
   // 只剩下的缺项走问句，不允许 updateConf 把锁撤回去
   det.role=det.role||1; det.stage=det.stage||1;
@@ -3778,7 +3781,8 @@ $('#sslist').addEventListener('click',e=>{
   }
 });
 $('#ss-copy').onclick=async()=>{
-  const st=S.decisions.filter(d=>d.v==='star').map(d=>d.card);
+  const st=[...S.decisions.filter(d=>d.v==='star').map(d=>d.card),
+            ...(S.importedStars||[]).map(r=>({name:r.n, school:r.sc, exp1:{co:r.co}}))];
   const ys=S.decisions.filter(d=>d.v==='yes').map(d=>d.card);
   const t=`【约面清单 · ${$('#jobtag').textContent.split('　')[0]}】\n\n直接约面：\n`
     +st.map((c,i)=>`${i+1}. ${c.name} · ${c.school} · ${c.exp1.co} · ${(S.starStatus||{})[c.name]||'待约'}${(S.starNotes||{})[c.name]?` —— ${S.starNotes[c.name]}`:''}`).join('\n')
@@ -3802,16 +3806,17 @@ $('#donebtn').onclick=()=>{render();show('result');window.scrollTo(0,0)};
 $('#histlink').onclick=()=>{ $('#filterbtn').click(); setTimeout(()=>$('#memhist')?.scrollIntoView({behavior:'smooth',block:'center'}),350); };
 function widenPool(){
   const seen=new Set([...S.decisions.map(d=>d.card.name),...S.stack.map(x=>x.card.name)]);
-  S.F=blankF(); S.Fdraft=blankF();
   const raw=poolDocs();
   const all=raw.length ? raw.map((d,i)=>({...cardFromCV(d.text,S.tk,i), src:d.src})) : S.deck0;
-  const fresh=all.filter(c=>!seen.has(c.name));
+  const fresh=all.filter(c=>!seen.has(c.name)&&!memExcluded(c));   // 「不要这样的」记忆仍然生效
   if(fresh.length<=S.pool.length){ $('#lwhy').textContent='库里没有更多本岗位的简历了。'; $('#lwhy').style.display='block'; setTimeout(()=>$('#lwhy').style.display='none',4000); return; }
+  const hadF=activeCount(S.F);
+  S.F=blankF(); S.Fdraft=blankF();
   S.deck=[...S.decisions.map(d=>d.card),...S.stack.map(x=>x.card),...fresh];
   S.pool=fresh;
   if(REAL()) $('#jobtag').textContent=$('#jobtag').textContent.replace(/　\d+\/\d+$/,`　${S.deck.length}/${S.realTotal}`);
   fill(); tick();
-  $('#lwhy').textContent=`已扩大到本岗位全部 ${S.deck.length} 份。`; $('#lwhy').style.display='block';
+  $('#lwhy').textContent=`已扩大到本岗位全部 ${S.deck.length} 份。`+(hadF?`原有 ${hadF} 条硬性条件已清空。`:''); $('#lwhy').style.display='block';
   setTimeout(()=>$('#lwhy').style.display='none',4000);
 }
 document.addEventListener('click',e=>{ if(e.target.id==='lwiden') widenPool(); });
