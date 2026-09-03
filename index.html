@@ -663,6 +663,7 @@ kbd{font:inherit;font-size:11px;border:1px solid var(--line);border-radius:5px;p
   <div class="stage" id="stage">
     <div class="empty" id="empty" style="display:none">
       <div style="font-size:15px;color:var(--ink2)">这批滑完了</div>
+      <div style="font-size:13px;color:var(--ink3);margin-top:4px" id="emptyhint"></div>
       <div style="display:flex;gap:8px;justify-content:center;margin-top:6px">
         <button class="gh" id="emptydone">看画像</button>
         <button class="gh alt" id="emptywiden">扩大范围</button>
@@ -1297,6 +1298,12 @@ function fill(){
     S.stack.push({el,card:c});
   }
   $('#empty').style.display = S.stack.length? 'none':'grid';
+  if(!S.stack.length){
+    const more=widenFresh().length>S.pool.length;
+    $('#emptyhint').textContent = portraitReady()? '' :
+      (more? '画像还没出。' : '画像还没出，库里没有更多了。');
+    $('#emptywiden').style.display = more? '' : 'none';
+  }
   if(!S.stack.length && S.decisions.length>=10 && !S.autoDone && portraitReady()){
     S.autoDone=true;                                  // 滑完自动出画像（没就绪就停在空状态让用户选）
     setTimeout(()=>{
@@ -3804,11 +3811,14 @@ $('#b-star').onclick=()=>decide('star');
 $('#b-undo').onclick=undo;
 $('#donebtn').onclick=()=>{render();show('result');window.scrollTo(0,0)};
 $('#histlink').onclick=()=>{ $('#filterbtn').click(); setTimeout(()=>$('#memhist')?.scrollIntoView({behavior:'smooth',block:'center'}),350); };
-function widenPool(){
+function widenFresh(){
   const seen=new Set([...S.decisions.map(d=>d.card.name),...S.stack.map(x=>x.card.name)]);
   const raw=poolDocs();
   const all=raw.length ? raw.map((d,i)=>({...cardFromCV(d.text,S.tk,i), src:d.src})) : S.deck0;
-  const fresh=all.filter(c=>!seen.has(c.name)&&!memExcluded(c));   // 「不要这样的」记忆仍然生效
+  return all.filter(c=>!seen.has(c.name)&&!memExcluded(c));        // 「不要这样的」记忆仍然生效
+}
+function widenPool(){
+  const fresh=widenFresh();
   if(fresh.length<=S.pool.length){ $('#lwhy').textContent='库里没有更多本岗位的简历了。'; $('#lwhy').style.display='block'; setTimeout(()=>$('#lwhy').style.display='none',4000); return; }
   const hadF=activeCount(S.F);
   S.F=blankF(); S.Fdraft=blankF();
