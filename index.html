@@ -213,6 +213,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 @media (hover:none){
   html.decklock,html.decklock body{overflow:hidden;height:100%;overscroll-behavior:none}
 }
+html,body{overflow-x:hidden}
 button{touch-action:manipulation}
 .stage{
   position:relative;margin:16px auto 0;
@@ -1359,6 +1360,12 @@ function paint(){
 
 }
 stage.addEventListener('touchmove',e=>{ if(drag) e.preventDefault(); },{passive:false});
+// iOS 上 overflow:hidden 锁不住触摸滚动：滑卡屏上除弹层内部外，一律拦掉页面拖动
+document.addEventListener('touchmove',e=>{
+  if(!document.documentElement.classList.contains('decklock')) return;
+  if(e.target.closest('.spanel')) return;
+  e.preventDefault();
+},{passive:false});
 stage.addEventListener('pointerup',end); stage.addEventListener('pointercancel',end);
 function end(e){
   if(!drag||e.pointerId!==drag.id) return;
