@@ -210,6 +210,10 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
   transform:translateX(-50%);left:0;transition:left .4s cubic-bezier(.3,1,.4,1)}
 
 .deckgrid{display:block}
+@media (hover:none){
+  html.decklock,html.decklock body{overflow:hidden;height:100%;overscroll-behavior:none}
+}
+button{touch-action:manipulation}
 .stage{
   position:relative;margin:16px auto 0;
   width:min(392px,92vw);height:min(560px,62dvh);
@@ -1346,9 +1350,9 @@ function paint(){
   raf=0; if(!pending||!S.stack.length) return;
   const {dx,dy}=pending, top=S.stack[0];
   const rot=Math.max(-16,Math.min(16,dx*0.05));
-  top.el.style.transform=`translate3d(${dx}px,${dy}px,0) rotate(${rot}deg)`;
-  const px=Math.min(1,Math.abs(dx)/TH()), py=Math.min(1,Math.max(0,-dy)/THU());
   const up = -dy>Math.abs(dx)*1.25;
+  top.el.style.transform=`translate3d(${up?dx*0.3:dx}px,${up?dy:dy*0.22}px,0) rotate(${up?0:rot}deg)`;
+  const px=Math.min(1,Math.abs(dx)/TH()), py=Math.min(1,Math.max(0,-dy)/THU());
   top.el.querySelector('.s-yes').style.opacity = up?0:(dx>0?px:0);
   top.el.querySelector('.s-no').style.opacity  = up?0:(dx<0?px:0);
   top.el.querySelector('.s-star').style.opacity = up?py:0;
@@ -3022,7 +3026,8 @@ renderPresets();
 /* ==================================================================
    9. 页面装配
    ================================================================== */
-function show(id){ $$('.screen').forEach(s=>s.classList.remove('on')); $('#'+id).classList.add('on'); }
+function show(id){ $$('.screen').forEach(s=>s.classList.remove('on')); $('#'+id).classList.add('on');
+  document.documentElement.classList.toggle('decklock', id==='deck'); }
 const OPT={
   role:['产品','研发','设计','运营','市场','职能'],
   year:['实习','校招','社招'],
