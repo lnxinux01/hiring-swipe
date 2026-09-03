@@ -1,0 +1,3833 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,420;9..144,540&display=swap" rel="stylesheet">
+<title>画像滑卡</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>
+/* ============================== TOKENS ==============================
+   Editorial Paper：纸白底、油墨炭灰字。强调只通过墨色的面积、字重和实度
+   表达，不引入第二种品牌色。有色相只回答「现在是什么状态」。
+   夜间用深灰不用纯黑，字用软白。
+   ==================================================================== */
+:root{
+  --bg:#ffffff; --panel:#ffffff; --panel-2:#fbfbfb; --sunk:#f7f7f7;
+  --ink:#1d1d1d; --ink-solid:#1d1d1d;
+  --ink2:rgba(29,29,29,.64); --ink3:rgba(29,29,29,.44); --ink4:rgba(29,29,29,.28);
+  --line:rgba(227,227,227,.95); --line2:rgba(234,234,234,.9);
+  --tint:rgba(29,29,29,.045); --tint2:rgba(29,29,29,.08);
+  /* 语义色只有三种状态：否 / 是 / 警告。★ 不给色相，用实心墨色表达最强 */
+  --pass:#b0433c; --pick:#1d1d1d; --warn:#8a5a1f;
+  --sh-card:0 1px 1px rgba(29,29,29,.04), 0 6px 16px rgba(29,29,29,.06), 0 22px 50px rgba(29,29,29,.05);
+  --sh-btn:0 1px 2px rgba(29,29,29,.05), 0 3px 10px rgba(29,29,29,.07);
+  --r:20px;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+  --display:"Fraunces",Georgia,-apple-system,"PingFang SC","Noto Sans SC",serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#191919; --panel:#202020; --panel-2:#1c1c1c; --sunk:#161616;
+  --ink:rgba(255,255,255,.92); --ink-solid:#ffffff;
+  --ink2:rgba(255,255,255,.62); --ink3:rgba(255,255,255,.42); --ink4:rgba(255,255,255,.26);
+  --line:rgba(255,255,255,.10); --line2:rgba(255,255,255,.065);
+  --tint:rgba(255,255,255,.055); --tint2:rgba(255,255,255,.10);
+  --pass:#e0817a; --pick:rgba(255,255,255,.92); --warn:#d3a35e;
+  --sh-card:0 1px 1px rgba(0,0,0,.5), 0 8px 24px rgba(0,0,0,.45), 0 30px 64px rgba(0,0,0,.4);
+  --sh-btn:0 1px 2px rgba(0,0,0,.5), 0 4px 12px rgba(0,0,0,.4);
+}}
+:root[data-theme="dark"]{
+  --bg:#191919; --panel:#202020; --panel-2:#1c1c1c; --sunk:#161616;
+  --ink:rgba(255,255,255,.92); --ink-solid:#ffffff;
+  --ink2:rgba(255,255,255,.62); --ink3:rgba(255,255,255,.42); --ink4:rgba(255,255,255,.26);
+  --line:rgba(255,255,255,.10); --line2:rgba(255,255,255,.065);
+  --tint:rgba(255,255,255,.055); --tint2:rgba(255,255,255,.10);
+  --pass:#e0817a; --pick:rgba(255,255,255,.92); --warn:#d3a35e;
+  --sh-card:0 1px 1px rgba(0,0,0,.5), 0 8px 24px rgba(0,0,0,.45), 0 30px 64px rgba(0,0,0,.4);
+  --sh-btn:0 1px 2px rgba(0,0,0,.5), 0 4px 12px rgba(0,0,0,.4);
+}
+/* 兼容旧变量名 */
+:root,:root[data-theme="dark"]{ --card:var(--panel); --raise:var(--panel-2); --chip:var(--tint); --chipink:var(--ink2); --star:var(--ink); }
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);
+  -webkit-font-smoothing:antialiased;overscroll-behavior:none;
+  font-size:15px;line-height:1.55;
+}
+::selection{background:var(--tint2)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--tint2);border-radius:5px}
+/* 直线上的圆点：离散的规则线。实心 / 空心混排 */
+.ruledots{position:relative;height:8px;margin:0 0 24px;max-width:160px}
+.ruledots::before{content:"";position:absolute;top:3.5px;left:0;right:0;height:1px;background:var(--line)}
+.ruledots i{position:absolute;top:0;width:8px;height:8px;border-radius:50%;background:var(--ink)}
+.ruledots i:nth-child(1){left:0}
+.ruledots i:nth-child(2){left:36%;width:6px;height:6px;top:1px;background:var(--bg);border:1.5px solid var(--ink)}
+.ruledots i:nth-child(3){left:72%}
+.ruledots i:nth-child(4){right:0;width:4px;height:4px;top:2px;background:var(--ink3)}
+
+/* 扇形牌堆：产品自己的 hero。纹理全是墨色细线，不引入色相 */
+.fan{position:relative;height:104px;margin:6px 0 30px}
+.fan i{position:absolute;left:50%;top:6px;width:62px;height:86px;margin-left:-31px;border-radius:9px;
+  border:1px solid var(--line2);outline:1px solid var(--line);background-color:var(--panel);box-shadow:var(--sh-card);
+  transform-origin:50% 130%;animation:fanIn .8s cubic-bezier(.22,1.1,.35,1) backwards}
+.fan i{transform:var(--tr);transition:transform .35s cubic-bezier(.22,1.2,.35,1),box-shadow .35s}
+.fan i:nth-child(1){--tr:rotate(-18deg) translateX(-64px);animation-delay:.05s}
+.fan i:nth-child(2){--tr:rotate(-9deg) translateX(-32px);animation-delay:.12s}
+.fan i:nth-child(3){--tr:rotate(0) translateY(-6px);animation-delay:.19s}
+.fan i:nth-child(4){--tr:rotate(9deg) translateX(32px);animation-delay:.26s}
+.fan i:nth-child(5){--tr:rotate(18deg) translateX(64px);animation-delay:.33s}
+.fan i:hover{transform:var(--tr) translateY(-16px) scale(1.16);z-index:3;box-shadow:var(--sh-card)}
+.fmk{cursor:pointer;position:absolute;top:56px;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;
+  background:var(--panel);border:1px solid var(--line);box-shadow:var(--sh-btn);z-index:4;
+  animation:fanIn .8s cubic-bezier(.22,1.1,.35,1) backwards}
+.fmk svg{width:15px;height:15px}
+.fmk-x{left:calc(50% - 128px);color:var(--pass);animation-delay:.42s}
+.fmk-v{left:calc(50% + 96px);color:var(--ink);animation-delay:.5s}
+@media (max-width:480px){ .fmk{width:28px;height:28px;top:50px} .fmk-x{left:calc(50% - 112px)} .fmk-v{left:calc(50% + 84px)} }
+.fmk:hover{transform:scale(1.12)}
+.fmk:active{transform:scale(.9)}
+.fmk{transition:transform .15s cubic-bezier(.3,1.4,.5,1)}
+@keyframes flyL{to{transform:translate(-190px,-30px) rotate(-32deg);opacity:0}}
+@keyframes flyR{to{transform:translate(190px,-30px) rotate(32deg);opacity:0}}
+.fan i.gone-l{animation:flyL .45s cubic-bezier(.5,0,.75,.35) forwards}
+.fan i.gone-r{animation:flyR .45s cubic-bezier(.5,0,.75,.35) forwards}
+@keyframes backL{from{transform:translate(-190px,-30px) rotate(-32deg);opacity:0}}
+@keyframes backR{from{transform:translate(190px,-30px) rotate(32deg);opacity:0}}
+.fan i.back-l{animation:backL .6s cubic-bezier(.22,1.1,.35,1) backwards}
+.fan i.back-r{animation:backR .6s cubic-bezier(.22,1.1,.35,1) backwards}
+@media (prefers-reduced-motion:reduce){.fan i.gone-l,.fan i.gone-r,.fan i.back-l,.fan i.back-r{animation:none}}
+@keyframes fanIn{from{transform:rotate(0) translateY(26px);opacity:0}}
+@media (prefers-reduced-motion:reduce){.fan i{animation:none}}
+.tex-v{background-image:repeating-linear-gradient(90deg,var(--ink4) 0 1px,transparent 1px 5px)}
+.tex-h{background-image:repeating-linear-gradient(0deg,var(--ink4) 0 1px,transparent 1px 5px)}
+.tex-g{background-image:repeating-linear-gradient(90deg,var(--tint2) 0 1px,transparent 1px 6px),repeating-linear-gradient(0deg,var(--tint2) 0 1px,transparent 1px 6px)}
+.tex-d{background-image:radial-gradient(var(--ink4) 1.2px,transparent 1.2px);background-size:7px 7px}
+.tex-s{background-image:repeating-linear-gradient(45deg,var(--ink4) 0 1px,transparent 1px 6px)}
+.tex-k{background:var(--ink)}
+.tex-k::after{content:"";position:absolute;inset:8px;border-radius:5px;
+  background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.22) 0 1px,transparent 1px 5px)}
+
+/* 星形：产品的记号。四角星比五角星更利落，也更像排版里的星标 */
+.sparkle{display:inline-block;vertical-align:-.12em;width:1em;height:1em}
+.sparkle path{fill:currentColor}
+.h1 em{font-style:normal}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.screen{display:none;min-height:100dvh}
+.screen.on{display:block}
+
+/* ============================== LANDING ============================== */
+#landing{display:none;place-items:center;padding:32px 20px}
+#landing.on{display:grid}
+.lwrap{width:100%;max-width:520px}
+.brand{font-size:11px;letter-spacing:.22em;color:var(--ink3);text-transform:uppercase;margin-bottom:18px;
+  display:flex;align-items:center;gap:7px;font-weight:500}
+.h1{font-family:var(--display);font-size:clamp(32px,6.6vw,46px);line-height:1.18;letter-spacing:-.01em;font-weight:400;margin:0 0 16px}
+.h1 em{font-weight:560;letter-spacing:-.02em}
+.sub{color:var(--ink2);margin:0 0 34px;font-size:15.5px;max-width:44ch}
+.field{margin-bottom:22px}
+.flabel{font-size:12.5px;color:var(--ink3);margin-bottom:9px;letter-spacing:.02em}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.jobrow{display:block;width:100%;text-align:left;
+  padding:11px 14px;margin-top:8px;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  transition:border-color .14s,transform .12s}
+.jobrow .jr-t{font-size:14px;font-weight:550;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jobrow .jr-m{font-size:12px;color:var(--ink3);margin-top:3px}
+.nm-jd{font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--ink2);white-space:pre-wrap;
+  margin-top:9px;padding-top:9px;border-top:1px solid var(--line2);max-height:220px;overflow-y:auto}
+.jr-m .jrn{font-family:var(--display);font-style:normal;font-weight:540;color:var(--ink2)}
+.jobrow.picked{position:relative;border-color:var(--ink);box-shadow:inset 3px 0 0 var(--ink);cursor:pointer;width:100%}
+.jobrow.picked .jr-t{padding-right:28px}
+.pk-x{position:absolute;top:9px;right:9px;width:24px;height:24px;border-radius:8px;color:var(--ink4);font-size:15px;line-height:1}
+.pk-x:hover{color:var(--pass);background:var(--tint)}
+.jobrow:hover{border-color:var(--ink3);transform:translateY(-1px)}
+.jobrow[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 3px 0 0 var(--ink)}
+.jobrow .jr-meta{margin-left:auto;flex:none;font-size:11.5px;color:var(--ink3)}
+#jdview{margin-top:10px;padding:13px 15px;background:var(--sunk);border:1px solid var(--line2);border-radius:12px;
+  font-size:12.5px;line-height:1.75;color:var(--ink2);white-space:pre-wrap;max-height:300px;overflow-y:auto}
+#jdview:focus{outline:none;border-color:var(--ink3);background:var(--panel);color:var(--ink)}
+.selsum{display:flex;align-items:center;gap:10px;padding:12px 15px;background:var(--panel);
+  border:1px solid var(--line);border-radius:12px;font-size:14px}
+.selsum b{font-weight:600}
+.selsum .linkish{margin-left:auto;flex:none}
+.selrow{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line2)}
+.selrow:first-child{border-top:0;padding-top:0}
+.selk{flex:none;width:34px;font-size:11px;letter-spacing:.12em;color:var(--ink3);text-transform:uppercase;
+  padding-top:9px;font-weight:500}
+.chip{
+  padding:8px 14px;border-radius:9px;background:var(--panel);border:1px solid var(--line);
+  color:var(--ink2);font-size:14px;transition:background .16s,color .16s,border-color .16s,transform .12s;
+}
+.chip:active{transform:scale(.96)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.go{
+  margin-top:14px;width:100%;padding:15px;border-radius:11px;background:var(--ink);color:var(--bg);
+  font-size:16px;font-weight:600;letter-spacing:.01em;box-shadow:var(--sh-btn);transition:transform .12s,opacity .16s;
+}
+.go:hover{transform:translateY(-1px);box-shadow:var(--sh-card)}
+.go:active{transform:scale(.985)}
+.go:disabled{opacity:.35;box-shadow:none;transform:none;cursor:default}
+.go{transition:transform .18s cubic-bezier(.3,1,.4,1),box-shadow .18s}
+.lib{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.librow{font-size:14px}
+.librow b{font-family:var(--display);font-size:22px;font-weight:540;letter-spacing:-.01em}
+/* 数字统一用衬线 display 字体 —— 数据也值得好看 */
+.fchip i,.counter,#lnum,.score b,.rank,.iv b{font-family:var(--display)}
+.fchip i{font-weight:540;opacity:.55;font-size:11.5px}
+.drop{border:1.5px dashed var(--line);border-radius:14px;padding:20px 16px;text-align:center;
+  color:var(--ink3);cursor:pointer;font-size:13.5px;line-height:1.7;transition:border-color .15s,color .15s,background .15s}
+.drop.over,.drop:hover{border-color:var(--ink);color:var(--ink)}
+.drop.has{border-style:solid;border-color:var(--line)}
+.linkish{margin-top:11px;font-size:13px;color:var(--ink3);text-decoration:underline;text-underline-offset:3px;display:block}
+.linkish:hover{color:var(--ink)}
+.foot{margin-top:20px;font-size:12.5px;color:var(--ink4);line-height:1.7}
+
+/* ============================== DECK ============================== */
+#deck{padding:0}
+.top{
+  position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:12px;
+  padding:14px 18px 12px;background:linear-gradient(var(--bg) 68%,transparent);
+}
+.jobtag{font-size:13px;color:var(--ink2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.counter{font-size:12.5px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.tbtn{padding:7px 12px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;color:var(--ink2);background:var(--card);white-space:nowrap}
+.tbtn[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tbtn.ready{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tbtn:disabled{opacity:.35}
+
+.progress{position:relative;height:12px;margin:0 20px}
+.progress::before{content:"";position:absolute;top:5.5px;left:0;right:0;height:1px;background:var(--line)}
+.progress i{position:absolute;top:5.5px;left:0;height:1px;width:0;background:var(--ink);transition:width .4s cubic-bezier(.3,1,.4,1)}
+.progress .nd{position:absolute;top:3px;width:6px;height:6px;border-radius:50%;
+  background:var(--bg);border:1px solid var(--ink4);transform:translateX(-50%);transition:background .3s,border-color .3s}
+.progress .nd.hit{background:var(--ink);border-color:var(--ink)}
+.progress .tip{position:absolute;top:2px;width:8px;height:8px;border-radius:50%;background:var(--ink);
+  transform:translateX(-50%);left:0;transition:left .4s cubic-bezier(.3,1,.4,1)}
+
+.deckgrid{display:block}
+.stage{
+  position:relative;margin:16px auto 0;
+  width:min(392px,92vw);height:min(560px,62dvh);
+  touch-action:none;
+}
+.card{
+  position:absolute;inset:0;background:var(--panel);border-radius:var(--r);
+  box-shadow:var(--sh-card);border:1px solid var(--line);
+  will-change:transform,opacity;transform:translate3d(0,0,0);
+  contain:layout paint style;overflow:hidden;
+  backface-visibility:hidden;
+}
+.card.anim{transition:transform .44s cubic-bezier(.18,.89,.32,1.12),opacity .28s ease-out}
+.card.fly{transition:transform .40s cubic-bezier(.25,.46,.45,.94),opacity .34s linear}
+.cin{position:absolute;inset:0;display:flex;flex-direction:column;padding:22px 22px 18px;overflow:hidden}
+.cin>*{flex-shrink:0}
+
+.chead{display:flex;gap:13px;align-items:flex-start;margin-bottom:14px}
+.av{
+  width:48px;height:48px;border-radius:14px;flex:none;display:grid;place-items:center;
+  font-size:17px;font-weight:600;letter-spacing:.02em;
+  background:var(--tint2);color:var(--ink);border:1px solid var(--line);
+}
+.av[data-t="1"],.av[data-t="5"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.av[data-t="2"],.av[data-t="6"]{background:transparent;border:1.5px solid var(--ink);color:var(--ink)}
+.av[data-t="3"]{background:var(--tint);border-style:dashed}
+.av[data-t="4"]{background-image:repeating-linear-gradient(90deg,var(--tint2) 0 1px,transparent 1px 4px)}
+.av[data-t="7"]{background-image:radial-gradient(var(--tint2) 1.2px,transparent 1.2px);background-size:6px 6px}
+.nm{font-family:var(--display);font-size:21px;font-weight:540;letter-spacing:-.01em;line-height:1.2}
+.mt{font-size:13px;color:var(--ink3);margin-top:3px}
+.synth{margin-left:auto;font-size:10px;color:var(--ink4);border:1px solid var(--line);border-radius:6px;padding:2px 6px;white-space:nowrap}
+.card:has(.synth) .synth{letter-spacing:.02em}
+
+.blk{position:relative;padding:11px 0;border-top:1px solid var(--line2)}
+.blk:first-of-type{border-top:0}
+.bk{font-size:10.5px;letter-spacing:.14em;color:var(--ink3);text-transform:uppercase;margin-bottom:5px;font-weight:500}
+.bv{font-size:14.5px;color:var(--ink);line-height:1.5}
+.bd{font-size:13px;color:var(--ink2);line-height:1.62;margin-top:5px}
+.bd li{margin:3px 0 0;list-style:none;padding-left:13px;position:relative}
+.bd li::before{content:"";position:absolute;left:2px;top:9px;width:4px;height:4px;border-radius:50%;background:var(--ink4)}
+.blur{filter:blur(6px);opacity:.55;transition:filter .2s}
+
+.pins{position:absolute;top:8px;right:0;display:flex;gap:5px;opacity:.32;transition:opacity .16s}
+.blk:hover .pins,.blk.has .pins,.sec .pins{opacity:1}
+.pinbtn{
+  width:25px;height:25px;border-radius:8px;border:1px solid var(--line);background:var(--card);
+  display:grid;place-items:center;font-size:13px;color:var(--ink3);line-height:1;transition:all .14s;
+}
+.pinbtn:active{transform:scale(.9)}
+.blk.plus{box-shadow:inset 3px 0 0 var(--pick);padding-left:11px;margin-left:-11px}
+.blk.minus{box-shadow:inset 3px 0 0 var(--pass);padding-left:11px;margin-left:-11px}
+.blk.plus .pinbtn.p{background:var(--pick);color:#fff;border-color:var(--pick)}
+.blk.minus .pinbtn.m{background:var(--pass);color:#fff;border-color:var(--pass)}
+
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:14px}
+.tag{font-size:11.5px;padding:4px 9px;border-radius:6px;background:var(--tint);color:var(--ink2)}
+.hint{text-align:center;font-size:11.5px;color:var(--ink4);margin-top:12px}
+.card.behind .hint,.card.behind .pins{opacity:0}
+
+.side{
+  position:absolute;top:50%;transform:translateY(-50%);z-index:24;
+  width:46px;height:46px;border-radius:50%;display:grid;place-items:center;
+  background:var(--panel);border:1px solid var(--line);box-shadow:var(--sh-btn);
+  opacity:.55;transition:opacity .16s,transform .16s;
+}
+.side svg{width:19px;height:19px}
+.side-x{left:-62px;color:var(--pass)}
+.side-v{right:-62px;color:var(--ink)}
+.side:hover{opacity:1;transform:translateY(-50%) scale(1.08)}
+.side:active{transform:translateY(-50%) scale(.9)}
+@media (max-width:600px){.side{display:none}}
+.stamp{
+  position:absolute;top:82px;padding:7px 14px;border-radius:10px;border:2.5px solid;
+  font-size:16px;font-weight:800;letter-spacing:.08em;opacity:0;pointer-events:none;
+  will-change:opacity,transform;
+}
+.stamp.s-no{left:22px;color:var(--pass);border-color:var(--pass);transform:rotate(-13deg)}
+.stamp.s-yes{right:22px;color:var(--pick);border-color:var(--pick);transform:rotate(13deg)}
+.stamp.s-star{left:50%;top:auto;bottom:26px;margin-left:-52px;color:var(--bg);border-color:var(--ink);background:var(--ink)}
+
+.empty{position:absolute;inset:0;display:grid;place-content:center;text-align:center;gap:10px;color:var(--ink3)}
+
+/* controls */
+.ctrls{display:flex;justify-content:center;align-items:center;gap:14px;padding:22px 0 8px}
+.cb{
+  width:56px;height:56px;border-radius:50%;background:var(--panel);border:1px solid var(--line);
+  display:grid;place-items:center;box-shadow:var(--sh-btn);font-size:22px;line-height:1;
+  transition:transform .14s cubic-bezier(.3,1.4,.5,1),background .16s;
+}
+.cb:active{transform:scale(.88)}
+.cb.sm{width:44px;height:44px;font-size:16px}
+.cb.no{color:var(--pass)} .cb.yes{color:var(--pick)}
+.cb.st{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.cb.st svg{fill:var(--bg);width:20px;height:20px}
+.stamp.s-star svg{width:14px;height:14px;margin-right:2px}
+.cb:disabled{opacity:.3;box-shadow:none}
+/* 左右滑卡按钮 —— 悬浮在卡片下缘两角，主流 dating app 布局 */
+.cb.big{width:64px;height:64px}
+.keys{text-align:center;font-size:11.5px;color:var(--ink4);padding-bottom:26px}
+kbd{font:inherit;font-size:11px;border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:var(--ink3);background:var(--card)}
+
+/* ============================== SHEET (full resume) ============================== */
+.duel{position:fixed;inset:0;z-index:88;display:none;background:color-mix(in srgb,var(--ink) 22%,transparent)}
+.duel.on{display:grid;place-items:center;padding:20px}
+.dpanel{width:min(430px,94vw);background:var(--bg);border:1px solid var(--line);border-radius:18px;
+  padding:18px 18px 14px;box-shadow:var(--sh-card)}
+.dtitle{font-family:var(--display);font-size:17px;font-weight:540;margin-bottom:13px;text-align:center}
+.dcards{display:grid;gap:10px}
+.dwrap{position:relative}
+.dwrap .dcard{width:100%;padding-right:76px}
+.dpeek{position:absolute;top:10px;right:10px;font-size:11.5px;color:var(--ink3);
+  border:1px solid var(--line);border-radius:8px;padding:4px 9px;background:var(--panel)}
+.dpeek:hover{color:var(--ink);border-color:var(--ink3)}
+.dcard{text-align:left;padding:13px 15px;border:1px solid var(--line);border-radius:13px;background:var(--panel);
+  transition:transform .14s,border-color .14s}
+.dcard:hover{border-color:var(--ink);transform:translateY(-1px)}
+.dcard b{font-family:var(--display);font-size:16px}
+.dcard .dm{font-size:12.5px;color:var(--ink2);margin-top:4px;line-height:1.55}
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translate(-50%,140%);z-index:80;
+  visibility:hidden;
+  width:min(400px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--line);
+  border-radius:16px;padding:15px 17px;box-shadow:var(--sh-card);
+  transition:transform .45s cubic-bezier(.22,1.1,.35,1);
+}
+.toast{transition:transform .45s cubic-bezier(.22,1.1,.35,1),visibility 0s .45s}
+.toast.on{transform:translate(-50%,0);visibility:visible;transition:transform .45s cubic-bezier(.22,1.1,.35,1)}
+.tmsg{font-size:14.5px;line-height:1.55}
+.tacts{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
+#selpop{
+  position:fixed;z-index:99;display:flex;gap:6px;align-items:center;
+  background:var(--ink);border-radius:12px;padding:7px 8px;box-shadow:var(--sh-card);
+}
+#selpop button{padding:7px 12px;border-radius:9px;font-size:13px;line-height:1;color:var(--bg);flex:none;white-space:nowrap}
+#selpop-yes:hover{background:color-mix(in srgb,var(--pick) 55%,var(--ink))}
+#selpop-no:hover{background:color-mix(in srgb,var(--pass) 55%,var(--ink))}
+.sheet{
+  position:fixed;inset:0;z-index:90;display:none;
+  background:rgba(21,19,15,.34);
+}
+.sheet.on{display:block}
+#ssheet.on{display:grid;place-items:center;padding:20px}
+#fsheet .spanel{
+  left:0;bottom:0;top:0;transform:translateX(-100%);
+  width:min(420px,94vw);max-height:none;height:100dvh;
+  border-radius:0 22px 22px 0;
+}
+#fsheet.on .spanel{transform:translateX(0)}
+#ssheet .spanel{position:static;transform:none;border-radius:18px;width:min(500px,94vw);max-height:82dvh}
+#sslist .sec.ss-star{border-color:var(--ink);box-shadow:inset 3px 0 0 var(--ink)}
+#sslist .sec.ss-yes{background:var(--sunk);border-color:var(--line2)}
+#sslist .sec.ss-yes .bv{font-weight:500;color:var(--ink2)}
+.ss-st{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.ss-st .chip{font-size:11.5px;padding:4px 10px}
+.spanel{
+  position:absolute;left:50%;bottom:0;transform:translate(-50%,100%);
+  width:min(560px,100%);max-height:92dvh;overflow-y:auto;overscroll-behavior:contain;
+  background:var(--bg);border-radius:24px 24px 0 0;padding:0 22px 34px;
+  transition:transform .38s cubic-bezier(.22,.9,.3,1);
+}
+.sheet.on .spanel{transform:translate(-50%,0)}
+.shead{position:sticky;top:0;background:var(--bg);padding:16px 0 12px;display:flex;align-items:center;gap:10px;z-index:2}
+.grip{position:absolute;top:7px;left:50%;transform:translateX(-50%);width:36px;height:4px;border-radius:4px;background:var(--line)}
+.sec{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;position:relative}
+.sec .pins{top:12px;right:14px;opacity:1}
+.rlh{font-size:11px;letter-spacing:.12em;color:var(--ink3);margin:12px 0 2px;font-weight:500}
+.rl{position:relative;padding:5px 64px 5px 0;font-family:var(--mono);font-size:12.5px;line-height:1.7;color:var(--ink2);border-top:0}
+.rl .pins{top:4px;right:0;opacity:0}
+.rl:hover .pins,.rl.has .pins{opacity:1}
+.rl.plus{box-shadow:inset 3px 0 0 var(--pick);padding-left:10px}
+.rl.minus{box-shadow:inset 3px 0 0 var(--pass);padding-left:10px}
+.sec.plus{box-shadow:inset 3px 0 0 var(--pick)}
+.sec.minus{box-shadow:inset 3px 0 0 var(--pass)}
+.sec.plus .note,.sec.minus .note,.sec .note:not(:placeholder-shown){display:block}
+.note{
+  display:none;
+  width:100%;margin-top:10px;padding:10px 12px;border-radius:11px;border:1px dashed var(--line);
+  background:var(--bg);color:var(--ink);font:inherit;font-size:13.5px;resize:vertical;min-height:38px;
+}
+.note::placeholder{color:var(--ink4)}
+.note:focus{outline:none;border-style:solid;border-color:var(--ink3)}
+
+/* ============================== 筛简历 ============================== */
+.cvwrap{max-width:760px;margin:0 auto;padding:26px 20px 70px}
+.cvin{
+  width:100%;min-height:180px;padding:14px 16px;border-radius:16px;border:1px solid var(--line);
+  background:var(--card);color:var(--ink);font:inherit;font-size:13px;line-height:1.65;resize:vertical;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+.cvin:focus{outline:none;border-color:var(--ink3)}
+.cvrow{display:flex;align-items:center;gap:10px;padding:14px 0;border-top:1px solid var(--line2)}
+.rank{font-size:19px;font-weight:640;color:var(--ink4);width:30px;flex:none;font-variant-numeric:tabular-nums}
+.cvbody{flex:1;min-width:0}
+.cvname{font-size:15.5px;font-weight:600}
+.cvsig{font-size:12.5px;color:var(--ink3);margin-top:4px;line-height:1.6}
+.sig{display:inline-block;padding:2px 7px;border-radius:6px;font-size:11.5px;margin:2px 4px 0 0}
+.sig.p{background:color-mix(in srgb,var(--pick) 14%,transparent);color:var(--pick)}
+.sig.n{background:color-mix(in srgb,var(--pass) 14%,transparent);color:var(--pass)}
+.sig.x{background:var(--chip);color:var(--ink4)}
+.score{width:64px;flex:none;text-align:right}
+.score b{font-size:19px;font-weight:640;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.score .sb{height:4px;border-radius:4px;background:var(--line2);margin-top:5px;overflow:hidden}
+.score .sb i{display:block;height:100%;border-radius:4px}
+.cut{
+  display:flex;align-items:center;gap:10px;margin:16px 0 2px;font-size:12px;
+  letter-spacing:.1em;color:var(--ink4);text-transform:uppercase;
+}
+.cut::after{content:"";flex:1;height:1px;background:var(--line)}
+.dead{opacity:.45}
+
+/* ============================== RESULT ============================== */
+#result{padding:0 0 60px}
+.rwrap{max-width:660px;margin:0 auto;padding:26px 20px}
+.rtitle{font-family:var(--display);font-size:clamp(26px,5vw,36px);font-weight:420;letter-spacing:-.015em;margin:0 0 6px}
+.conf{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--ink3);margin-bottom:24px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--pick)}
+.srow{border:1px solid var(--line);border-radius:12px;margin-top:8px;background:var(--panel);overflow:hidden}
+.srow.dragover{border-color:var(--ink);box-shadow:inset 0 2px 0 var(--ink)}
+.sr-head{display:flex;gap:10px;align-items:center;padding:11px 13px;cursor:grab;user-select:none}
+.sr-head:active{cursor:grabbing}
+.sr-grip{color:var(--ink4);flex:none;font-size:14px}
+.sr-rank{font-family:var(--display);font-weight:540;width:18px;flex:none;color:var(--ink3)}
+.sr-name{font-weight:600}
+.sr-meta{color:var(--ink3);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.sr-chev{flex:none;color:var(--ink4);transition:transform .2s}
+.srow.open .sr-chev{transform:rotate(180deg)}
+.sr-body{display:none;padding:0 13px 12px;border-top:1px solid var(--line2)}
+.srow.open .sr-body{display:block}
+.sr-cv{font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--ink2);white-space:pre-wrap;
+  padding:10px 0;max-height:150px;overflow-y:auto}
+.sr-note{width:100%;padding:9px 12px;border-radius:10px;border:1px dashed var(--line);background:var(--bg);
+  color:var(--ink);font:inherit;font-size:13px}
+.sr-note:focus{outline:none;border-style:solid;border-color:var(--ink3)}
+.rcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:11px}
+.rh svg{width:10px;height:10px;margin-right:4px;vertical-align:-.05em}
+.rh{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);margin-bottom:12px;font-weight:500}
+.item{padding:11px 0;border-top:1px solid var(--line2)}
+.item:first-of-type{border-top:0;padding-top:0}
+.iv{font-size:15.5px;font-weight:550;line-height:1.45}
+.ev{font-size:12.5px;color:var(--ink3);margin-top:5px;line-height:1.6}
+.bar{height:5px;border-radius:5px;background:var(--line2);margin-top:8px;overflow:hidden;max-width:220px}
+.bar i{display:block;height:100%;border-radius:5px;transition:width .6s cubic-bezier(.3,1,.4,1)}
+.quote{border-left:2px solid var(--line);padding:2px 0 2px 12px;margin:9px 0;font-size:14px;color:var(--ink2)}
+.quote b{color:var(--ink);font-weight:550}
+.warn{background:color-mix(in srgb,var(--pass) 8%,var(--card));border-color:color-mix(in srgb,var(--pass) 22%,var(--line2))}
+.mono{font-family:var(--mono);font-size:12.5px;background:var(--sunk);border:1px solid var(--line2);padding:12px 14px;border-radius:11px;color:var(--ink2);line-height:1.7;word-break:break-all;white-space:pre-wrap}
+.rowbtns{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}
+.gh{padding:11px 17px;border-radius:10px;background:var(--ink);color:var(--bg);font-size:14.5px;font-weight:550}
+.gh.alt{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
+[contenteditable]:focus{outline:2px solid var(--ink3);outline-offset:4px;border-radius:4px}
+@media (max-width:480px){
+  .top{padding:10px 14px 8px}
+  .stage{height:max(380px, calc(100dvh - 348px)); margin-top:10px}
+  .cin{padding:16px 16px 12px}
+  .chead{margin-bottom:10px}
+  .av{width:42px;height:42px;font-size:15px;border-radius:12px}
+  .nm{font-size:19px}
+  .blk{padding:8px 0}
+  .bv{font-size:13.5px}
+  .bd{font-size:12px;line-height:1.55}
+  .tags{padding-top:9px}
+  .hint{display:none}
+  .ctrls{padding:26px 0 6px;gap:12px}
+  .cb{width:52px;height:52px;font-size:20px}
+  .cb.sm{width:40px;height:40px}
+  .learn{margin-top:6px}
+  .keys{display:none}
+  .fan{height:88px}
+  .fan i{width:54px;height:76px;margin-left:-27px}
+  .spanel{max-height:96dvh}
+}
+
+/* ============================== 学习进度 / 记一笔 ============================== */
+.learn{max-width:min(392px,92vw);margin:10px auto 0;font-size:12.5px}
+.lrow{display:flex;align-items:center;gap:8px;color:var(--ink3)}
+.lbar{flex:1;height:4px;border-radius:4px;background:var(--line2);overflow:hidden}
+.lbar i{display:block;height:100%;border-radius:4px;transition:width .45s cubic-bezier(.3,1,.4,1),background .3s}
+.lwhy{
+  margin-top:9px;padding:11px 13px;border-radius:13px;background:var(--card);
+  border:1px solid var(--line2);color:var(--ink2);line-height:1.6;font-size:12.5px;
+}
+.lwhy b{color:var(--ink)}
+.lwhy button{color:var(--ink);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.think{display:flex;gap:8px;max-width:min(392px,92vw);margin:11px auto 0}
+.think input{
+  flex:1;padding:11px 14px;border-radius:13px;border:1px solid var(--line);background:var(--card);
+  color:var(--ink);font:inherit;font-size:13.5px;
+}
+.think input::placeholder{color:var(--ink4)}
+.think input:focus{outline:none;border-color:var(--ink3)}
+.think button{padding:0 15px;border-radius:13px;background:var(--ink);color:var(--bg);font-size:13.5px;font-weight:550}
+.think button:disabled{opacity:.3}
+.notelist{max-width:min(392px,92vw);margin:9px auto 0;display:flex;flex-direction:column;gap:6px}
+.noteitem{
+  font-size:12.5px;color:var(--ink2);background:var(--chip);border-radius:11px;padding:8px 12px;
+  display:flex;gap:8px;align-items:flex-start;line-height:1.5;
+}
+.noteitem em{font-style:normal;color:var(--ink4);font-size:11.5px;white-space:nowrap}
+
+/* ============================== 筛选面板（硬性条件） ============================== */
+.iconbtn{
+  width:38px;height:38px;border-radius:12px;background:var(--card);border:1px solid var(--line);
+  display:grid;place-items:center;box-shadow:var(--sh-btn);flex:none;transition:transform .14s;position:relative;
+}
+.iconbtn:active{transform:scale(.9)}
+.iconbtn svg{width:19px;height:19px;stroke:var(--ink);stroke-width:1.9;fill:none;stroke-linecap:round}
+.badge{
+  position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;
+  background:var(--ink);color:var(--bg);font-size:10.5px;font-weight:650;display:grid;place-items:center;
+}
+.fsec{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:11px}
+.fhead{display:flex;align-items:center;gap:10px;margin-bottom:13px}
+.fico{width:30px;height:30px;border-radius:9px;background:var(--tint);display:grid;place-items:center;flex:none;color:var(--ink2)}
+.fico svg{width:16px;height:16px}
+.fico .sparkle{width:14px;height:14px;color:var(--ink)}
+.ftitle{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.fsub{font-size:12px;color:var(--ink4);margin-left:auto;white-space:nowrap}
+.fnote{font-size:11.5px;color:var(--ink4);line-height:1.6;margin-top:11px;padding-top:10px;border-top:1px solid var(--line2)}
+.fchip{
+  padding:8px 14px;border-radius:9px;background:var(--tint);border:1px solid transparent;
+  color:var(--ink2);font-size:14px;transition:background .16s,color .16s,transform .12s;
+}
+.fchip:active{transform:scale(.95)}
+.fchip i{font-style:normal;opacity:.45;font-size:11px;margin-left:5px;font-variant-numeric:tabular-nums}
+.fchip.z{opacity:.32;pointer-events:none}
+.lgrow{display:flex;gap:12px;align-items:center;padding:6px 0}
+.lgk{flex:none;width:32px;font-size:12.5px;color:var(--ink2)}
+.fchip[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+
+/* 双滑块 */
+.rng{position:relative;height:38px;margin-top:6px}
+.rng .track{position:absolute;top:17px;left:9px;right:9px;height:4px;border-radius:4px;background:var(--line)}
+.rng .fillbar{position:absolute;top:17px;height:4px;border-radius:4px;background:var(--ink)}
+.rng input{
+  position:absolute;top:0;left:0;width:100%;height:38px;margin:0;background:none;pointer-events:none;
+  -webkit-appearance:none;appearance:none;
+}
+.rng input::-webkit-slider-thumb{
+  -webkit-appearance:none;pointer-events:auto;width:26px;height:26px;border-radius:50%;
+  background:var(--card);border:1px solid var(--line);box-shadow:var(--sh-btn);cursor:grab;
+}
+.rng input::-webkit-slider-thumb:active{cursor:grabbing;transform:scale(1.1)}
+.rng input::-moz-range-thumb{
+  pointer-events:auto;width:26px;height:26px;border-radius:50%;border:1px solid var(--line);
+  background:var(--card);box-shadow:var(--sh-btn);cursor:grab;
+}
+.rngval{display:flex;justify-content:space-between;font-size:17px;font-weight:640;letter-spacing:-.01em}
+.rngval span{font-size:13px;font-weight:400;color:var(--ink3)}
+
+.memrow{display:grid;grid-template-columns:16px 26px auto 1fr auto;gap:7px 9px;align-items:center;padding:10px 0;border-top:1px solid var(--line2)}
+.memgrip{color:var(--ink4);cursor:grab;font-size:12px}
+.memrow.dragover{box-shadow:inset 0 2px 0 var(--ink)}
+.memrow .memdim{grid-column:3/4}
+.memrow:first-child{border-top:0}
+.memrow .memdim{grid-column:2/3}
+.memsign{width:26px;height:26px;border-radius:8px;border:1px solid var(--line);flex:none;font-size:13px;line-height:1}
+.memsign[data-s="1"]{background:var(--pick);border-color:var(--pick);color:#fff}
+.memsign[data-s="-1"]{background:var(--pass);border-color:var(--pass);color:#fff}
+.memtext{flex:1;min-width:0;border:0;background:none;color:var(--ink);font:inherit;font-size:13.5px;padding:2px 0}
+.memtext:focus{outline:none;border-bottom:1px solid var(--ink3)}
+.memdim{border:1px solid var(--line);background:var(--panel);color:var(--ink3);border-radius:7px;
+  font:inherit;font-size:11.5px;padding:4px 6px;justify-self:start;max-width:100%}
+.memdel{width:24px;height:24px;border-radius:7px;color:var(--ink4);flex:none;font-size:15px;line-height:1}
+.memdel:hover{color:var(--pass);background:var(--tint)}
+.seedchip{font-size:12.5px;line-height:1.5;padding:6px 10px;border-radius:8px;background:var(--tint);color:var(--ink2);
+  margin:5px 5px 0 0;display:inline-block;text-align:left;max-width:100%}
+.seedchip:hover{background:var(--tint2);color:var(--ink)}
+.fbar{
+  position:sticky;bottom:0;background:linear-gradient(transparent,var(--bg) 26%);
+  padding:20px 0 8px;margin-top:6px;display:flex;gap:9px;align-items:center;
+}
+.fcount{flex:1;font-size:13px;color:var(--ink2);line-height:1.45}
+.fcount b{font-size:19px;font-weight:640;color:var(--ink);letter-spacing:-.01em}
+.fcount.thin b{color:var(--pass)}
+</style>
+</head>
+<body>
+
+<!-- ============================== LANDING ============================== -->
+<div id="landing" class="screen on">
+  <div class="lwrap">
+    <h1 class="h1">滑简历，<em>出画像</em>。</h1>
+    <div class="fan" id="fan"><i class="tex-v"></i><i class="tex-g"></i><i class="tex-k"></i><i class="tex-d"></i><i class="tex-s"></i><button class="fmk fmk-x" id="fanx" aria-label="演示：左滑不要"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button><button class="fmk fmk-v" id="fanv" aria-label="演示：右滑要"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5 10 18 19.5 6.5"/></svg></button></div>
+
+    <div class="field">
+      <div class="flabel">岗位</div>
+      <input class="cvin" id="rolesearch" style="min-height:0;padding:12px 15px;font-family:var(--font);font-size:14px"
+        placeholder="搜索在招岗位：评测 / 推荐算法 / 前端…">
+      <div class="chips" id="pickedjobs" style="margin-top:8px"></div>
+      <div id="joblist"></div>
+      <div id="park" style="display:none"></div>
+    </div>
+
+    <div id="parsed">
+      <div class="field" id="selfield" style="display:none">
+
+        <div id="selrows" style="display:none">
+          <div id="selq" style="font-size:13.5px;margin:10px 0 4px;color:var(--ink)"></div>
+          <div class="selrow" data-k="role"><span class="selk">职能</span><div class="chips" id="f-role"></div></div>
+          <div class="selrow" data-k="sub"><span class="selk">方向</span><div class="chips" id="f-sub"></div></div>
+          <div class="selrow" data-k="stage"><span class="selk">阶段</span><div class="chips" id="f-year"></div></div>
+          <div class="selrow" data-k="tk"><span class="selk">赛道</span><div class="chips" id="f-track"></div></div>
+        </div>
+      </div>
+      <div class="field" id="jdfield" style="display:none">
+        <button class="linkish" id="jdtoggle" style="margin-top:0">写 / 贴 JD →</button>
+        <div id="jdwrap" style="display:none;margin-top:10px">
+          <textarea class="cvin" id="jd" style="min-height:104px;font-family:var(--font);font-size:13.5px"
+            placeholder="粘贴 JD 文字"></textarea>
+          <div id="jdout" style="margin-top:9px"></div>
+        </div>
+      </div>
+    <div class="field" id="poolfield">
+      <div class="flabel">简历池</div>
+      <div class="lib">
+        <div class="chips" id="f-mode"></div>
+        <div class="librow" style="margin-top:12px;display:flex;align-items:center;gap:8px">
+          <span id="libnum" style="display:none"><b id="libtotal">0</b> 份</span>
+          <span id="libhint" style="color:var(--ink3);font-size:12.5px">定位岗位后载入匹配简历</span>
+          <button class="linkish" id="libnarrow" style="margin:0 0 0 auto;display:none">调整范围 →</button>
+        </div>
+        <div class="chips" id="f-src" style="margin-top:10px"></div>
+      </div>
+    </div>
+      <div class="field" id="presetwrap" style="display:none">
+        <div class="flabel">筛选历史</div>
+        <div class="chips" id="presets"></div>
+      </div>
+      <button class="go" id="start" disabled>开始</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== DECK ============================== -->
+<div id="deck" class="screen">
+  <div class="top">
+    <button class="iconbtn" id="backbtn" title="回首页" style="box-shadow:none;border-color:transparent">
+      <svg viewBox="0 0 24 24"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg>
+    </button>
+    <button class="iconbtn" id="filterbtn" title="硬性条件">
+      <svg viewBox="0 0 24 24"><path d="M3 7h6M15 7h6M3 17h10M19 17h2"/><circle cx="12" cy="7" r="2.6"/><circle cx="16" cy="17" r="2.6"/></svg>
+    </button>
+    <div class="jobtag" id="jobtag"></div>
+    <div class="counter" id="counter">0</div>
+    <button class="tbtn" id="donebtn" disabled>画像管理</button>
+    <button class="tbtn" id="starbtn">约面清单 <span id="starcount">0</span></button>
+  </div>
+
+  <div class="deckgrid">
+  <div class="dcol">
+  <div class="stage" id="stage">
+    <div class="empty" id="empty" style="display:none">
+      <div style="font-size:15px;color:var(--ink2)">这批滑完了</div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:6px">
+        <button class="gh" id="emptydone">看画像</button>
+        <button class="gh alt" id="emptywiden">扩大范围</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="ctrls">
+    <button class="cb sm" id="b-undo" title="撤销" disabled>↺</button>
+    <button class="cb no big" id="b-no" title="不合适（←）"><svg viewBox="0 0 24 24" style="width:24px;height:24px" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <button class="cb st" id="b-star" title="直接约面，并按这种人校准画像"><svg class="sparkle" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c.5 6.3 5.2 11 11.5 11.5v1C17.2 13 12.5 17.7 12 24h-1C10.5 17.7 5.8 13 -.5 12.5v-1C5.8 11 10.5 6.3 11 0h1z"/></svg></button>
+    <button class="cb yes big" id="b-yes" title="可以聊（→）"><svg viewBox="0 0 24 24" style="width:24px;height:24px" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5 10 18 19.5 6.5"/></svg></button>
+  </div>
+  </div>
+  <div class="dside">
+  <div class="learn">
+    <div class="lrow">
+      <span id="lstat">猜中率</span>
+      <div class="lbar"><i id="lfill"></i></div>
+      <span id="lnum" style="font-variant-numeric:tabular-nums">—</span>
+    </div>
+    <div class="lwhy" id="lwhy" style="display:none"></div>
+  </div>
+  <div class="think" id="starnote" style="display:none">
+    <input id="starnote-in" placeholder="已进约面名单，记一句亮点，可跳过" maxlength="60">
+    <button class="tbtn" id="starnote-skip">跳过</button>
+  </div>
+  <div class="think">
+    <input id="tinput" placeholder="我发现我想要的人是…" maxlength="80">
+    <button id="tadd" disabled>记下</button>
+  </div>
+  <button class="linkish" id="histlink" style="display:none;margin:8px auto 0">查看历史偏好 →</button>
+  <div class="notelist" id="notelist"></div>
+  </div>
+  </div>
+
+
+</div>
+
+<!-- ============================== SHEET ============================== -->
+<div class="sheet" id="jsheet">
+  <div class="spanel">
+    <div class="grip"></div>
+    <div class="shead">
+      <div style="flex:1"><div style="font-size:19px;font-weight:640" id="js-title">岗位 JD</div></div>
+      <button class="tbtn" id="js-import" style="display:none">导入待约</button>
+      <button class="tbtn" id="js-close">收起</button>
+    </div>
+    <div style="font-size:12px;color:var(--ink4);margin-bottom:8px" id="js-tip">可直接编辑，自动重读。识别「3 年以上」「985/211」「Python」这类要求。</div>
+    <div id="jsbody" contenteditable="true" spellcheck="false" style="white-space:pre-wrap;font-size:13px;line-height:1.8;color:var(--ink2);outline:none"></div>
+  </div>
+</div>
+
+<div class="sheet" id="ssheet">
+  <div class="spanel">
+    <div class="grip"></div>
+    <div class="shead">
+      <div style="flex:1"><div style="font-size:19px;font-weight:640">✦ 约面名单</div></div>
+      <button class="tbtn" id="ss-copy">复制</button>
+      <button class="tbtn" id="ss-close">收起</button>
+    </div>
+    <div id="sslist"></div>
+  </div>
+</div>
+
+<div class="sheet" id="sheet">
+  <div class="spanel" id="spanel">
+    <div class="grip"></div>
+    <div class="shead">
+      <div style="flex:1"><div id="sh-name" style="font-size:19px;font-weight:640"></div><div id="sh-meta" class="mt"></div></div>
+      <button class="tbtn" id="sh-close">收起</button>
+    </div>
+    <div id="sh-body"></div>
+    <div style="font-size:12px;color:var(--ink4);margin-top:14px;line-height:1.7">
+      ⊕ / ⊖ 加一句理由，画像会引用你的原话。
+    </div>
+  </div>
+</div>
+
+<!-- ============================== 筛选（硬性条件） ============================== -->
+<div class="duel" id="duel">
+  <div class="dpanel">
+    <div class="dtitle">只能面一位 —— 点谁面谁</div>
+    <div class="dcards">
+      <div class="dwrap"><button class="dcard" id="dA"></button><button class="dpeek" id="dpA">全简历</button></div>
+      <div class="dwrap"><button class="dcard" id="dB"></button><button class="dpeek" id="dpB">全简历</button></div>
+    </div>
+    <button class="linkish" id="dskip" style="margin:12px auto 0;display:block">都想面，跳过</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status">
+  <div class="tmsg" id="toastmsg"></div>
+  <div class="tacts" id="toastacts"></div>
+</div>
+
+<div id="selpop" style="display:none">
+  <button id="selpop-yes">＋ 要这样的</button>
+  <button id="selpop-no">− 不要这样的</button>
+</div>
+
+<div class="sheet" id="fsheet">
+  <div class="spanel">
+    <div class="grip"></div>
+    <div class="shead">
+      <div style="flex:1"><div style="font-size:19px;font-weight:640">硬性条件</div></div>
+      <button class="tbtn" id="freset">清空</button>
+      <button class="tbtn" id="fclose">收起</button>
+    </div>
+    <div id="fbody"></div>
+
+    <div class="fsec" id="kwsec">
+      <div class="fhead">
+        <div class="fico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></div>
+        <div class="ftitle">自定义条件</div><div class="fsub">按简历原文硬检索</div>
+      </div>
+      <div id="kwlist"></div>
+      <div class="think" style="margin:10px 0 0;max-width:none">
+        <input id="kwinput" placeholder="任意词：RLHF、Kaggle、外包…" maxlength="40">
+        <button class="tbtn" id="kwneg" aria-pressed="false" title="切换 必含 / 排除">必含</button>
+        <button id="kwadd" disabled>加上</button>
+      </div>
+    </div>
+
+    <div class="fsec" id="memsec">
+      <div class="fhead">
+        <div class="fico"><svg class="sparkle" viewBox="0 0 24 24"><path d="M12 0c.5 6.3 5.2 11 11.5 11.5v1C17.2 13 12.5 17.7 12 24h-1C10.5 17.7 5.8 13 -.5 12.5v-1C5.8 11 10.5 6.3 11 0h1z"/></svg></div>
+        <div class="ftitle">记住的偏好</div><div class="fsub">越靠前权重越高</div>
+      </div>
+      <div id="memlist"></div>
+      <div id="memhist"></div>
+      <div class="think" style="margin:10px 0 0;max-width:none">
+        <input id="minput" placeholder="要什么 / 不要什么" maxlength="80">
+        <button id="madd" disabled>加上</button>
+      </div>
+      <div class="fnote" id="memseed"></div>
+    </div>
+
+    <div class="fbar">
+      <div class="fcount" id="fcount"></div>
+      <button class="gh" id="fapply">应用</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== 筛简历 ============================== -->
+<div id="screen-cv" class="screen"><div class="cvwrap">
+  <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:6px">
+    <div style="flex:1">
+      <h1 class="rtitle" style="margin:0">拿这份画像筛简历</h1>
+      <div class="conf" id="cvmodel" style="margin:6px 0 0"></div>
+    </div>
+    <button class="tbtn" id="cvback">← 画像</button>
+  </div>
+  <p class="sub" style="margin:16px 0 12px;font-size:14px">
+    一份一段，<code>---</code> 分隔。
+  </p>
+  <textarea class="cvin" id="cvtext" placeholder="张三&#10;北京邮电大学 软件工程 2027.06 毕业&#10;字节跳动 产品实习生 6个月&#10;- 独立从0到1做了内容推荐位，自己写PRD跟到上线&#10;- 上线后次日留存从32%提升到41%&#10;技能：Python SQL 英语可工作&#10;&#10;---&#10;&#10;李四&#10;..."></textarea>
+  <div class="rowbtns" style="margin-top:12px">
+    <button class="gh" id="cvrun">打分排序</button>
+    <button class="gh alt" id="cvdemo">载入示例</button>
+    <button class="gh alt" id="cvclear">清空</button>
+  </div>
+  <div id="cvout"></div>
+</div></div>
+
+<!-- ============================== RESULT ============================== -->
+<div id="result" class="screen"><div class="rwrap" id="rwrap"></div></div>
+
+<script>
+/* ==================================================================
+   1. 维度定义  —— 卡片就是这 5 个维度的正交组合，所以偏好可解耦
+   ================================================================== */
+const DIMS = {
+  co:    {label:'实习公司类型', L:{big:'大厂',uni:'独角兽',start:'早期创业',rival:'垂类竞品'}},
+  z01:   {label:'0→1 经历',    L:{yes:'从零搭过东西',no:'只做迭代维护'}},
+  major: {label:'专业背景',     L:{cs:'CS 科班',eng:'理工非 CS',biz:'商科/文科'}},
+  track: {label:'赛道匹配',     L:{same:'同赛道',near:'邻近赛道',cross:'跨界'}},
+  proof: {label:'产出可验证性', L:{quant:'有量化结果',work:'有作品/文档',desc:'仅职责描述'}},
+  school:{label:'学校背景',     L:{t1:'清北/华五',t2:'其余 985/211',t3:'双非',sea:'海外 QS100'}, sensitive:true, random:true}
+};
+
+/* ---------- 语料池 ---------- */
+const SUR='陈林黄张李王吴刘周郑杨赵孙徐胡朱高何郭马罗梁宋唐许韩冯邓曹彭曾肖田董袁潘蒋蔡余杜叶程苏魏吕丁任沈姚卢姜崔钟谭陆汪范金石廖贾夏韦付方白邹孟熊秦邱江尹薛段雷侯龙史陶黎贺顾毛郝龚邵万钱严覃武戴莫孔向汤'.split('');
+const GIV=['子涵','雨桐','思远','嘉懿','若彤','宇轩','诗涵','博文','欣怡','梓萱','锦程','宁远','亦辰','清越','沐辰','一鸣','舒窈','安然','以恒','南舟','听澜','慕白','之遥','向晚','望舒','长宁','怀瑾','斯年','昭','屿','桐','珩','稚','屹','悦然','嘉树','明煦','若初','言澈','知微','弈然','行简'];
+const SCHOOL={
+  t1:['清华大学','北京大学','上海交通大学','复旦大学','浙江大学','南京大学','中国科学技术大学'],
+  t2:['中国人民大学','武汉大学','华中科技大学','同济大学','北京航空航天大学','西安交通大学','哈尔滨工业大学','中山大学','厦门大学','东南大学','北京邮电大学','华东师范大学'],
+  t3:['杭州电子科技大学','深圳大学','苏州大学','江南大学','南京邮电大学','浙江工业大学','广东工业大学','西安电子科技大学'],
+  sea:['新加坡国立大学','香港大学','香港科技大学','南洋理工大学','伦敦大学学院','卡内基梅隆大学','伊利诺伊大学香槟分校','香港中文大学']
+};
+const MAJOR={
+  cs:['计算机科学与技术','软件工程','人工智能','数据科学与大数据技术','智能科学与技术'],
+  eng:['自动化','电子信息工程','工业工程','生物医学工程','统计学','数学与应用数学','机械工程'],
+  biz:['工商管理','市场营销','新闻传播学','社会学','心理学','经济学','设计学','汉语言文学']
+};
+const CO={
+  big:['字节跳动','腾讯','阿里巴巴','美团','快手','百度','京东','网易','拼多多','小米'],
+  uni:['理想汽车','蔚来','作业帮','贝壳找房','喜马拉雅','元气森林','泡泡玛特','途虎养车'],
+  start:['某 Pre-A 轮 AI 工具团队','某天使轮出海 SaaS','某种子轮社区产品','某 A 轮 Agent 创业公司','某 A+ 轮跨境电商团队','某天使轮硬件消费品牌']
+};
+const TRACKS={
+  ai:{name:'AI 应用',rival:['月之暗面','阶跃星辰','面壁智能','秘塔科技','Dify 团队','DeepSeek'],
+      mod:['多轮上下文管理','Prompt 模板市场','评测集与自动评分','Agent 工具编排','bad case 归因看板',
+           '长文档问答的召回策略','意图识别兜底','模型路由与成本控制','多模态输入入口','人工标注流程'],
+      met:['首答满意度','召回准确率','任务完成率','意图识别准确率','次日留存'],
+      down:['bad case 率','单会话 token 成本','无效对话占比']},
+  ecom:{name:'电商 / 交易',rival:['Temu 团队','闲鱼','转转','唯品会','拼多多国际'],
+      mod:['商家履约看板','退换货自助流程','拼团玩法','搜索结果页','跨境清关信息填写','优惠券中台'],
+      met:['下单转化率','复购率','履约准时率','加购率','搜索点击率'], down:['客诉率','退款率']},
+  social:{name:'社区 / 内容',rival:['即刻','Soul','B站','豆瓣','Keep'],
+      mod:['创作者激励中台','话题聚合页','评论区互动组件','冷启动推荐位','社区治理与举报流程','关系链推荐'],
+      met:['发布率','互动率','7 日留存','创作者留存','完播率'], down:['举报率','跳出率']},
+  saas:{name:'企业服务 / SaaS',rival:['飞书','钉钉','明道云','神策数据','纷享销客'],
+      mod:['审批流配置器','权限中心','数据看板自定义','客户健康度模型','开放 API 文档站','多租户计费'],
+      met:['工单解决率','续费率','配置完成率','试用转化率','账号激活率'], down:['客户流失率','超时工单占比']}
+};
+const NEAR={ai:'saas',saas:'ai',ecom:'social',social:'ecom'};
+
+/* 研发 / 测开有自己的系统词汇和详细度。产品写「模块」，研发写「服务」，测开写「用例」 */
+const ROLEKIND=r=>{
+  if(/测试|测开/.test(r)) return 'qa';
+  if(/研发|后端|前端|算法/.test(r)) return /测试/.test((typeof S!=='undefined'&&S.sub)||'') ? 'qa' : 'dev';
+  return 'pm';
+};
+const SYS={
+  dev:['推荐召回服务','消息推送网关','订单状态机','实时特征平台','支付对账系统','Feed 排序服务','配置中心','数据同步管道','鉴权中间件'],
+  qa: ['接口自动化框架','UI 自动化用例集','压测平台','线上巡检系统','混沌演练工具','测试数据工厂','CI 流水线','缺陷分析看板']
+};
+const ROLEB={
+  dev:{
+    yes:s=>[`从 0 搭了「${s}」：选型、接口设计、上线全程负责`,`独立负责「${s}」的第一版，两周出可用服务`,`团队没有对口开发，我接了「${s}」，从设计文档写到灰度`],
+    no: s=>[`维护「${s}」，跟进日常迭代和线上问题排查`,`在成熟的「${s}」上承接需求开发与 code review`,`维护「${s}」已有能力，配合上下游联调`],
+    quant:(s,n)=>[`把「${s}」的 P99 从 ${n*8}ms 优化到 ${n*3}ms，QPS 扛到 ${n*200}`,`接口成功率从 ${99+Math.min(0.5,n/100)}% 提到 99.9%，月度告警从 ${n} 次降到个位数`],
+    work:s=>[`沉淀了「${s}」的设计文档和压测报告，团队后续复用`,`产出「${s}」的技术选型对比（gRPC / HTTP / MQ 三方案）加一版可运行 demo`],
+    desc:s=>[`参与需求评审、代码评审、跟进排期等日常工作`,`配合完成接口文档整理与跨团队联调`]
+  },
+  qa:{
+    yes:s=>[`从 0 搭了「${s}」，覆盖核心接口并接进 CI，每次提交自动跑`,`独立负责「${s}」第一版，把手工回归变成自动化`,`团队没有专职测开，我接了「${s}」，从用例设计做到流水线接入`],
+    no: s=>[`维护「${s}」，跟进日常用例更新和回归执行`,`在成熟的「${s}」上承接用例编写与缺陷跟踪`,`维护「${s}」已有用例，配合开发定位线上问题`],
+    quant:(s,n)=>[`用例覆盖率从 ${40+n}% 提到 ${70+Math.min(20,n)}%，线上缺陷率下降 ${n+10}%`,`回归耗时从 ${n} 小时压到 ${Math.max(1,Math.round(n/6))} 小时，发版频率翻倍`],
+    work:s=>[`沉淀了「${s}」的用例设计规范和缺陷分类法，成了团队默认标准`,`产出「${s}」的压测报告和瓶颈分析，附一版可交互看板`],
+    desc:s=>[`参与用例评审、缺陷跟踪、跟进排期等日常工作`,`配合完成测试文档整理与跨团队沟通`]
+  }
+};
+/* 每个人写简历的方式不一样：有人惜字如金，有人写得密不透风 */
+const STYLES=['terse','standard','standard','rich'];
+const AVG=[0,1,2,3,4,5,6,7];   // 头像不给色相，用墨色深浅区分
+
+/* ---------- 确定性随机 ---------- */
+const rng=s=>{let x=(s*2654435761)>>>0;return()=>{x^=x<<13;x>>>=0;x^=x>>17;x^=x<<5;x>>>=0;return x/4294967296}};
+const P=(r,a)=>a[Math.floor(r()*a.length)|0];
+const I=(r,a,b)=>a+Math.floor(r()*(b-a+1));
+
+/* ---------- 造一张卡 ---------- */
+function makeCard(id, d, tk, F, role, stage){
+  const r=rng(id+7919), T=TRACKS[tk];
+  const kind=ROLEKIND(role||'产品经理'), style=P(r,STYLES), soc=stage==='社招';
+  const coName = d.co==='rival' ? P(r,T.rival) : P(r,CO[d.co]);
+  const coName2 = d.co==='big' ? P(r,CO.uni) : P(r,CO.big);
+  const tkOf = d.track==='same' ? tk : d.track==='near' ? NEAR[tk] : P(r,Object.keys(TRACKS).filter(k=>k!==tk&&k!==NEAR[tk]));
+  const T2=TRACKS[tkOf];
+  const mod=P(r,T2.mod), mod2=P(r,TRACKS[P(r,Object.keys(TRACKS))].mod);
+  const met=P(r,T2.met), n1=I(r,8,42), n2=I(r,12,60);
+  const metD=P(r,T2.down||['成本']), nd=I(r,14,45);   // 越低越好的指标不能说「提升到」
+  const school=P(r,SCHOOL[d.school]), major=P(r,MAJOR[d.major]);
+  const name=P(r,SUR)+P(r,GIV);
+
+  let age=soc?I(r,24,33):I(r,21,26), onsite=P(r,[3,4,5,5]);
+  let dur1=soc?I(r,1,6):I(r,3,10), dur2=0;
+  const AIB = tkOf==='ai' && {
+    yes:[`独立从 0 到 1 做了「${mod}」：自己定指标、写 Prompt、拉算法和工程，两周一个版本跑到上线`,
+         `团队没有专职 PM，我接了「${mod}」—— 先攒了 ${I(r,120,600)} 条的评测集，再拿它推动模型侧调优`,
+         `牵头「${mod}」第一版，从场景定义、bad case 归因一路跟到灰度放量`],
+    no: [`负责「${mod}」的日常迭代，维护 Prompt 版本和 ${I(r,40,200)} 条回归用例`,
+         `在成熟的「${mod}」团队里承接需求拆解，跟进每周的 bad case 复盘`,
+         `维护「${mod}」已有能力，配合算法同学定标注规范和验收标准`],
+    quant:[`上线后 ${met} 从 ${n1}% 提升到 ${n1+I(r,4,15)}%，${metD}同时降了 ${I(r,12,40)}%`,
+           `把 ${met} 从 ${n1}% 做到 ${n1+I(r,5,18)}%，这条指标后来进了团队季度 OKR`,
+           `${metD}从 ${nd}% 压到 ${Math.max(3,nd-I(r,8,20))}%，复盘时被拉出来讲过一次`],
+    work:[`沉淀了一份 ${I(r,150,800)} 条的评测集和一套 bad case 分类法，现在是团队验收的默认标准`,
+          `产出「${mod}」的竞品拆解（横向比了 Kimi / 豆包 / ChatGPT 的处理方式）加一版可交互原型`],
+    desc:[`参与需求评审、标注验收、跟进排期等日常工作`,
+          `配合完成 Prompt 文档整理与跨团队沟通`]
+  };
+  const RB = kind!=='pm' && ROLEB[kind];
+  const sys = RB ? P(r,SYS[kind]) : null;
+  let b1 = RB ? P(r, RB[d.z01](sys)) : AIB ? P(r, AIB[d.z01]) : d.z01==='yes'
+    ? P(r,[`独立从 0 到 1 做了「${mod}」，自己写 PRD、拉研发、跟到灰度上线`,
+           `团队没有专职 PM，我接了「${mod}」，从用户访谈一路做到上线复盘`,
+           `牵头「${mod}」第一版，两个月从想法到可用`])
+    : P(r,[`负责「${mod}」的日常迭代，跟进 3 个版本的需求评审与验收`,
+           `维护「${mod}」已有功能，配合运营完成 5 次活动配置`,
+           `在成熟的「${mod}」团队里承接需求拆解与数据看板维护`]);
+  let b2 = RB ? P(r, d.proof==='quant'?RB.quant(sys,I(r,6,40)):RB[d.proof](sys))
+           : AIB ? P(r, AIB[d.proof]) : d.proof==='quant'
+    ? P(r,[`上线后 ${met} 从 ${n1}% 提升到 ${n1+I(r,3,14)}%，被写进季度复盘`,
+           `${metD}从 ${nd}% 降到 ${Math.max(3,nd-I(r,7,18))}%，被写进季度复盘`])
+    : d.proof==='work'
+    ? P(r,[`沉淀了一份「${mod}」竞品拆解 + 可交互原型，团队后续复用`,`产出 20 页的用户访谈纪要和一版完整原型，附在申请材料里`])
+    : P(r,[`参与需求评审、用户调研、跟进排期等日常工作`,`配合完成文档整理与跨部门沟通`]);
+  // 社招：不是「实习了 N 个月」，是带线、带人、背指标
+  if(soc){
+    const X = RB ? sys : mod;
+    b1 = d.z01==='yes'
+      ? (dur1>=3
+         ? P(r,[`从 0 拉起「${X}」这条线，从一个人做到 ${I(r,3,9)} 人小组`,
+                `主导「${X}」从立项到规模化，全程负责`])
+         : P(r,[`独立从 0 搭起「${X}」的第一版并跟到上线`,
+                `「${X}」立项时我是唯一${kind==='pm'?'产品':'研发'}，从设计做到交付`]))
+      : P(r,[`接手成熟的「${X}」，负责季度规划与迭代排期`,
+             `在「${X}」团队里负责其中一条功能线，向总监汇报`]);
+    b2 = d.proof==='quant'
+      ? (kind==='dev'
+         ? P(r,[`重构后支撑日均 ${I(r,1,9)} 亿请求，P99 从 ${I(r,120,400)}ms 降到 ${I(r,30,90)}ms`,
+                `把服务可用性做到 99.9${I(r,5,9)}%，年故障时长缩到 ${I(r,1,4)} 小时`])
+         : kind==='qa'
+         ? P(r,[`发布频率从双周提到日发，线上事故同比降 ${I(r,30,70)}%`])
+         : P(r, dur1>=2
+             ? [`任内 ${met} 从 ${n1}% 做到 ${n1+I(r,6,22)}%，对应年营收增量约 ${I(r,300,5000)} 万`,
+                `${metD}从 ${nd}% 压到 ${Math.max(3,nd-I(r,8,20))}%，写进部门年度复盘`]
+             : [`任内 ${met} 从 ${n1}% 做到 ${n1+I(r,5,14)}%`,
+                `${metD}从 ${nd}% 压到 ${Math.max(3,nd-I(r,6,14))}%`]))
+      : d.proof==='work'
+      ? P(r,[`沉淀的「${X}」方法论和评审体系成了部门模板`,
+             `输出的技术方案被相邻两个团队复用`])
+      : P(r,[`负责「${X}」的日常需求管理与跨部门协调`]);
+  }
+  const b3 = soc
+    ? (dur1>=3
+       ? P(r,[`带过 ${I(r,2,6)} 人${kind==='pm'?'产品小组':'小团队'}，负责晋升评审和招聘`,
+              `横向拉通 ${I(r,2,5)} 个团队交付季度目标`,
+              `经历过一次组织调整，把线稳住没掉人`])
+       : P(r,[`和 ${I(r,2,6)} 名${kind==='pm'?'研发':'同事'}日常协作，独立扛一条线`,
+              `参与季度规划，负责自己这条线的排期`]))
+    : RB ? P(r, kind==='dev'
+      ? [`日常和 ${I(r,2,5)} 名后端 + ${I(r,1,3)} 名前端协作，走 code review 合码`,
+         `参与每周的技术方案评审，写过 ${I(r,2,8)} 份设计文档`,
+         `远程 / 到岗混合，每周到岗 ${I(r,3,5)} 天`]
+      : [`日常和 ${I(r,3,8)} 名开发对接，负责发版前的回归卡点`,
+         `参与每两周的缺陷复盘，跟进 ${I(r,10,60)} 个线上问题闭环`,
+         `远程 / 到岗混合，每周到岗 ${I(r,3,5)} 天`])
+    : P(r, tkOf==='ai'
+    ? [`日常和 ${I(r,2,5)} 名算法 + ${I(r,2,4)} 名工程协作，每周过一次 case review`,
+       `远程 / 到岗混合，每周到岗 ${I(r,3,5)} 天`,
+       `汇报给一位从 ${P(r,['推荐','搜索','NLP','增长'])} 转过来的产品负责人`]
+    : [`日常和 ${I(r,2,6)} 名研发 + ${I(r,1,3)} 名设计协作，周会上过需求`,
+                  `远程 / 到岗混合，每周到岗 ${I(r,3,5)} 天`,
+                  `汇报给一位 ${I(r,3,8)} 年经验的产品负责人`]);
+
+  const second = r()>0.32 ? {
+    co:coName2,
+    role:'',
+    dur:'',
+    lines:[P(r,[`跟进「${mod2}」的需求文档与验收`,`做过一轮竞品调研与市场规模测算`,`负责后台配置与日常答疑`])]
+  } : null;
+
+  const skill=[];
+  if(kind==='pm'){
+    if(d.major==='cs') skill.push('会写代码','读得懂接口文档');
+    if(d.major==='eng') skill.push('会写 SQL','Python 数据处理');
+    if(d.major==='biz') skill.push('用户访谈','商业分析');
+  } else {
+    if(d.major==='cs') skill.push('数据结构扎实','读得懂源码');
+    if(d.major==='eng') skill.push('会写 SQL','Linux 常用命令');
+    if(d.major==='biz') skill.push('自学转码','刷过 LeetCode');
+  }
+  if(d.z01==='yes') skill.push(kind==='pm'?'0→1':'从 0 搭过服务');
+  if(d.proof==='quant') skill.push('数据驱动');
+  if(d.proof==='work') skill.push('原型/Figma');
+  if(kind==='dev') skill.push(...P(r,[['MySQL','Redis'],['Kafka','K8s'],['Docker','gRPC'],['分布式','微服务']]));
+  if(kind==='qa')  skill.push(...P(r,[['pytest','接口自动化'],['JMeter','压测'],['Selenium','CI/CD'],['Jenkins','缺陷分析']]));
+  if(tkOf==='ai' && kind==='pm'){
+    skill.push(P(r,['Prompt 工程','评测集设计','bad case 归因']));
+    if(d.proof!=='desc') skill.push(P(r,['RAG','Agent 编排','标注规范','会看 trace log']));
+    if(d.major==='cs') skill.push(P(r,['读得懂论文','跑过微调','LangGraph']));
+  }
+  if(d.co==='rival') skill.push(T.name+'背景');
+  if(d.co==='start') skill.push('抗压', kind==='pm'?'什么都干':'全栈都碰过');
+  if(d.co==='big') skill.push('流程规范');
+  skill.push(P(r, kind==='pm' ? ['英语可工作','出海经验','B端','C端','增长','会做PPT但不喜欢']
+    : kind==='dev' ? ['英语可工作','读英文文档','有开源 PR','写过技术博客','刷题 500+']
+    : ['英语可工作','写过测试用例模板','懂一点性能调优','会看火焰图']));
+
+  const self = (tkOf==='ai' && kind==='pm')
+    ? (d.z01==='yes'
+       ? P(r,[`比起写 PRD，我更愿意先自己去跑一百条 case 看模型到底错在哪。`,
+              `喜欢做还没被定义清楚的事，AI 产品最好玩的就是标准是自己立的。`])
+       : P(r,[`习惯先把评测标准和数据看清楚再动手改 Prompt。`,
+              `做事比较稳，喜欢把 bad case 一条条归类到能复现为止。`]))
+    : kind==='dev'
+      ? (d.z01==='yes'
+         ? P(r,[`喜欢从头把一个服务立起来，比接手别人的代码有意思。`,`遇到问题习惯先看源码再问人。`])
+         : P(r,[`做事比较稳，改动前会先看清上下游依赖。`,`喜欢把已有系统的边界情况一个个啃干净。`]))
+      : kind==='qa'
+      ? (d.z01==='yes'
+         ? P(r,[`见不得重复劳动，能自动化的绝不手工点。`,`喜欢把「测不出来」变成「测得出来」。`])
+         : P(r,[`做事细，用例宁可写重也不肯漏。`,`喜欢把缺陷归因到能稳定复现为止。`]))
+    : (d.z01==='yes'
+       ? P(r,[`喜欢自己动手把东西做出来，不太能忍受只写文档不落地。`,`最爽的是看到自己拍板的东西真的有人用。`])
+       : P(r,[`做事比较稳，习惯把流程和文档理清楚再动。`,`喜欢在成熟体系里把一件事做扎实。`]));
+
+  let en  = P(r,['工作','工作','日常','日常','日常','弱']);
+  let jp  = r()>0.87 ? P(r,['N1','N2']) : null;
+  let fr  = r()>0.95 ? '熟练' : null;
+  const code=(()=>{
+    const pool=['Python','SQL','Java','Go','JS/TS','C++'];
+    const n = d.major==='cs'? I(r,2,4) : d.major==='eng'? I(r,1,3) : (r()>0.55?1:0);
+    const o=[]; for(let i=0;i<n;i++){const x=P(r,pool); if(!o.includes(x)) o.push(x);}
+    return o;
+  })();
+
+  // 硬性条件不是拿来过滤的，是拿来「定义候选人宇宙」的 —— 按条件构造，
+  // 这样偏好维度的正交性在任何筛选下都保持完整，推断照样有效
+  if(F){
+    const lo=Math.max(21,F.age[0]), hi=Math.min(26,F.age[1]);
+    age = hi>=lo ? I(r,lo,hi) : Math.max(21,Math.min(26,F.age[0]));
+    if(F.onsite.length) onsite=P(r,F.onsite);
+    for(const x of F.code) if(!code.includes(x)) code.push(x);
+    if(F.lang.length){
+      const want=P(r,F.lang);                       // 多选是「或」，随机满足其中一条
+      if(want==='en_work') en='工作';
+      else if(want==='en_daily'){ if(en==='弱') en='日常'; }
+      else jp = jp || P(r,['N1','N2']);
+    }
+    let tot=dur1+dur2;
+    if(tot<F.months[0]||tot>F.months[1]){
+      tot=I(r,Math.max(0,F.months[0]),Math.min(14,F.months[1]));
+      dur2 = second ? Math.min(dur2,Math.max(0,tot-1)) : 0;
+      dur1 = Math.max(tot-dur2,0);
+    }
+  }
+  if(second){
+    dur2 = soc?I(r,0,2):I(r,2,4);
+    second.dur = soc ? `${Math.max(1,dur2)} 年` : `${dur2} 个月`;
+    second.role = soc
+      ? (kind==='dev'?'后端工程师':kind==='qa'?'测试工程师':'产品经理')
+      : P(r,['产品实习生','产品运营实习生','数据分析实习生','战略投资实习生','用户研究实习生']);
+  }
+
+  // 真实校招简历会有的东西：求职意向、GPA/排名、主修课、证书
+  const gpa=(2.9+r()*1.2).toFixed(2), rank=I(r,3,45);
+  const courses = d.major==='cs' ? P(r,[['数据结构','机器学习','数据库系统'],['算法设计','自然语言处理','软件工程']])
+    : d.major==='eng' ? P(r,[['概率论与数理统计','运筹学','信号处理'],['数理统计','最优化方法','控制理论']])
+    : P(r,[['消费者行为学','市场调研','统计学'],['传播学研究方法','社会统计','用户心理']]);
+  const certs=[];
+  if(en==='工作') certs.push(P(r,[`雅思 ${(6.5+Math.floor(r()*2)/2).toFixed(1)}`,`托福 ${I(r,95,110)}`,'CET-6 ' + I(r,560,650)]));
+  else if(en==='日常') certs.push('CET-'+P(r,['4 '+I(r,500,570),'6 '+I(r,430,500)]));
+  if(jp) certs.push('日语 '+jp);
+  if(fr) certs.push(P(r,['法语 DELF B2','法语 TCF C1']));
+  if(r()>0.6) certs.push(P(r,['NPDP 产品经理认证','Google 数据分析证书','PMP（在考）']));
+
+  return {
+    id, d, name, school, major, tk:tkOf,
+    grad: soc?`${dur1+dur2} 年经验`:'2027.06 毕业', gpa, rank, courses, certs,
+    intent:`${kind==='dev'?P(r,['后端开发','研发','算法']):kind==='qa'?P(r,['测试开发','质量工程']):P(r,['产品经理','AI 产品经理','产品经理（策略方向）'])}${soc?'':stage==='校招'?'（校招）':'实习'} · ${P(r,['北京','上海','杭州','深圳'])}${stage==='实习'?` · 每周 ${onsite} 天`:''}`,
+    age, en, jp, fr, code, months:dur1+dur2, onsite,
+    av:id%8, ini:name.slice(0,1),
+    style,
+    exp1:{co:coName,
+      role: soc
+          ? (kind==='dev' ? (dur1>=4?'资深':dur1>=2?'高级':'')+'后端工程师'
+             : kind==='qa' ? (dur1>=4?'资深':'')+'测试开发工程师'
+             : (dur1>=4?'资深':dur1>=2?'高级':'')+'产品经理')
+          : kind==='dev' ? P(r,['后端开发实习生','研发实习生','算法工程实习生'])
+          : kind==='qa'  ? P(r,['测试开发实习生','质量工程实习生','测试实习生'])
+          : P(r,['产品经理实习生','产品实习生','增长产品实习生']),
+      dur:soc?`${dur1} 年`:`${dur1} 个月`,
+      lines: style==='terse' ? [b1,b2] : style==='rich' ? [b1,b2,b3,
+        P(r, (d.z01==='no'&&d.proof==='desc')
+          ? [`每周整理一份进度同步邮件`,`维护团队的需求排期表和会议纪要`,`跟着导师做了几轮竞品体验`]
+          : kind==='pm'
+          ? [`同期还跟了「${mod2}」的需求，两条线并行`,`主动做了一轮用户回访（${I(r,8,25)} 位），整理成纪要给到团队`]
+          : kind==='dev'
+          ? [`顺手把「${sys}」的单测覆盖从 ${I(r,30,55)}% 补到 ${I(r,70,88)}%`,`值过 ${I(r,4,12)} 次线上 oncall，处理过 ${I(r,2,9)} 次 P2 故障`]
+          : [`同时维护 ${I(r,80,400)} 条历史用例，每次发版前跑一轮`,`推动开发把 ${I(r,5,20)} 个高频缺陷做了根因治理`])
+      ] : [b1,b2,b3]},
+    exp2:second,
+    proj:{title:P(r,[`个人项目：${mod2}`,`课程项目：${mod2}`,`校园创业：${mod2}`]), line:d.proof==='desc'?'参与其中的需求梳理部分':`独立完成，${d.proof==='quant'?`累计 ${I(r,200,9000)} 名用户使用`:'有完整原型和演示视频'}`},
+    skill:[...new Set(skill)], self
+  };
+}
+
+/* ---------- 造整副牌：5 个维度全组合 × 2 变体 = 432 张 ---------- */
+function buildDeck(tk, F, role, stage){
+  const out=[]; let i=0;
+  const sk=(F&&F.school.length)?F.school:Object.keys(DIMS.school.L);
+  for(const co of ['big','uni','start','rival'])
+   for(const z01 of ['yes','no'])
+    for(const major of ['cs','eng','biz'])
+     for(const track of ['same','near','cross'])
+      for(const proof of ['quant','work','desc'])
+       for(let v=0;v<2;v++){
+         // 学校随机分配（不进正交网格）—— 于是它成了对照变量：
+         // 如果它照样跑出强信号，说明面试官在无意识地按学校筛人
+         const school=sk[Math.floor(rng(i*977+13)()*sk.length)];
+         out.push(makeCard(i++,{co,z01,major,track,proof,school},tk,F,role,stage));
+       }
+  // Fisher-Yates，确定性
+  const r=rng(1234567);
+  for(let k=out.length-1;k>0;k--){const j=Math.floor(r()*(k+1));[out[k],out[j]]=[out[j],out[k]];}
+  return out;
+}
+
+/* ==================================================================
+   2. 状态
+   ================================================================== */
+const S={ role:'产品', year:'实习', tk:'ai', deck:[], i:0,
+          stack:[], decisions:[], annos:{}, sheetCard:null, pool:[] };
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const stage=$('#stage');
+const V={ no:-1, yes:1, star:2 };
+
+/* ==================================================================
+   3. 卡片渲染
+   ================================================================== */
+function pinHTML(dim,key){
+  return `<div class="pins"><button class="pinbtn m" data-pin="${key}" data-dim="${dim}" data-sign="-1" title="就是这里不行">−</button><button class="pinbtn p" data-pin="${key}" data-dim="${dim}" data-sign="1" title="就要这个">+</button></div>`;
+}
+function blk(dim,key,kicker,val,detail,extraCls){
+  return `<div class="blk ${extraCls||''}" data-key="${key}" data-dim="${dim}">
+    <div class="bk">${kicker}</div><div class="bv">${val}</div>${detail?`<div class="bd">${detail}</div>`:''}
+    ${pinHTML(dim,key)}</div>`;
+}
+function cardHTML(c){
+  const tkl = c.d.track==='same'?'同赛道':c.d.track==='near'?'邻近赛道':'跨界';
+  return `<div class="cin">
+    <div class="chead">
+      <div class="av" data-t="${c.av}">${c.ini}</div>
+      <div style="min-width:0">
+        <div class="nm">${c.name}</div>
+        <div class="mt">${c.grad} · ${TRACKS[c.tk].name}</div>
+      </div>
+      <div class="synth">${c.real?(SRCS().find(x=>x[0]===c.src)||[,'简历库'])[1]:'合成样本'}</div>
+    </div>
+    ${blk('school','school','教育背景',`<span class="sens">${c.school}</span>${c.major?' · '+c.major:''}`, SOC()?'':`GPA ${c.gpa} · 专业前 ${c.rank}%`)}
+    ${blk('co','co',SOC()?'现任':'主要实习',`${c.exp1.co}${c.exp1.role?' · '+c.exp1.role:''}`,`${c.exp1.dur} · ${TRACKS[c.tk].name}（${tkl}）`)}
+    ${blk('z01','z01','做的事','',`<ul style="margin:0;padding:0"><li>${c.exp1.lines[0]}</li></ul>`)}
+    ${c.exp1.lines[1]?blk('proof','proof','产出','',`<ul style="margin:0;padding:0"><li>${c.exp1.lines[1]}</li></ul>`):''}
+    ${c.real&&c.exp1.lines[2]?blk('track','more','还写了','',`<ul style="margin:0;padding:0"><li>${c.exp1.lines[2]}</li></ul>`):''}
+    <div class="tags">${c.skill.slice(0, innerWidth<480?4:6).map(s=>`<span class="tag">${s}</span>`).join('')}</div>
+    <div class="hint">点开看全简历</div>
+  </div>
+  <div class="stamp s-no">不合适</div>
+  <div class="stamp s-yes">可以聊</div>
+  <div class="stamp s-star"><svg class="sparkle" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c.5 6.3 5.2 11 11.5 11.5v1C17.2 13 12.5 17.7 12 24h-1C10.5 17.7 5.8 13 -.5 12.5v-1C5.8 11 10.5 6.3 11 0h1z"/></svg> 直接约面</div>`;
+}
+function makeEl(c){
+  const el=document.createElement('div');
+  el.className='card'; el.dataset.cid=c.id; el.innerHTML=cardHTML(c);
+  applyAnno(el,c);
+  return el;
+}
+function applyAnno(el,c){
+  const a=S.annos[c.id]||{};
+  el.querySelectorAll('.blk,.sec').forEach(b=>{
+    const k=b.dataset.key, v=a[k];
+    b.classList.toggle('plus', v?.sign===1); b.classList.toggle('minus', v?.sign===-1);
+    b.classList.toggle('has', !!v);
+  });
+}
+
+/* ==================================================================
+   4. 牌堆布局 —— 只保留 3 张在 DOM 里
+   ================================================================== */
+const REST=k=>`translate3d(0,0,0) scale(${k?0.985:1})`;
+function layout(anim){
+  S.stack.forEach((s,k)=>{
+    s.el.style.zIndex=20-k;
+    if(anim) s.el.classList.add('anim');
+    s.el.style.transform=REST(k);
+    s.el.style.opacity = k? '0' : '1';
+    s.el.classList.toggle('behind',k>0);
+  });
+}
+/* 每个（维度,取值）已经被判断过几次 */
+function exposure(){
+  const e={};
+  for(const dim in DIMS){ e[dim]={}; for(const lv in DIMS[dim].L) e[dim][lv]=0; }
+  for(const d of S.decisions) for(const dim in DIMS) e[dim][d.card.d[dim]]++;
+  return e;
+}
+/* 主动选卡：前 5 张求最大差异做粗定位，之后补最缺的取值 + 追已经露头的信号 */
+function nextCard(){
+  if(!S.pool.length) return null;
+  const dealt=[...S.decisions.map(d=>d.card),...S.stack.map(s=>s.card)];
+  const K=Object.keys(DIMS);
+  if(S.decisions.length<5){
+    let bi=0,bs=-1;
+    for(let i=0;i<Math.min(60,S.pool.length);i++){
+      const c=S.pool[i];
+      let s=dealt.length?1e9:0;
+      for(const o of dealt){ let h=0; for(const k of K) if(c.d[k]!==o.d[k]) h++; s=Math.min(s,h); }
+      if(s>bs){bs=s;bi=i}
+    }
+    return S.pool.splice(bi,1)[0];
+  }
+  // 每三张送一张模型最不看好的「挑战卡」—— 否则后期全发好卡，
+  // 负例断供，模型退化成「全都要」（真人库上实测会崩，合成正交流程掩盖了它）
+  if(S.decisions.length>=6 && S.decisions.length%3===2 && FIT){
+    let bi=-1,bp=2;
+    for(let i=0;i<Math.min(80,S.pool.length);i++){
+      const pp=predictP(S.pool[i]); if(pp!=null&&pp<bp){bp=pp;bi=i}
+    }
+    if(bi>=0&&bp<0.5){ const c=S.pool.splice(bi,1)[0]; c._ch=true; return c; }
+  }
+  const e=exposure(), A=analyze(false,150).out;
+  let sd=(S.decisions.length*2654435761)>>>0;
+  const rnd=()=>{sd^=sd<<13;sd>>>=0;sd^=sd>>>17;sd^=sd<<5;sd>>>=0;return sd/4294967296};
+  let bi=0,bs=-1;
+  for(let i=0;i<Math.min(80,S.pool.length);i++){
+    const c=S.pool[i]; let sc=0;
+    for(const k of K){
+      const inHand=S.stack.reduce((n,s)=>n+(s.card.d[k]===c.d[k]?1:0),0);
+      sc += (0.35+A[k].spread)/(1+e[k][c.d[k]]+inHand);   // 缺样本的取值优先，有信号的维度加权
+    }
+    sc *= 0.8+0.4*rnd();   // 抖动：纯 argmax 会在小样本里制造维度间伪相关，反过来骗过回归
+    if(sc>bs){bs=sc;bi=i}
+  }
+  return S.pool.splice(bi,1)[0];
+}
+function fill(){
+  while(S.stack.length<3){
+    const c=nextCard(); if(!c) break;
+    const el=makeEl(c);
+    el.style.transform=REST(S.stack.length);
+    el.style.opacity = S.stack.length ? '0' : '1';
+    el.classList.toggle('behind', S.stack.length>0);
+    el.style.zIndex=20-S.stack.length;
+    stage.appendChild(el);
+    S.stack.push({el,card:c});
+  }
+  $('#empty').style.display = S.stack.length? 'none':'grid';
+  if(!S.stack.length && S.decisions.length>=10 && !S.autoDone){
+    S.autoDone=true;                                  // 滑完自动出画像
+    setTimeout(()=>{ render(); show('result'); window.scrollTo(0,0); },500);
+  }
+}
+
+/* ==================================================================
+   5. 拖拽引擎 —— rAF 合帧，拖动期间零重排、只写 transform / opacity
+   ================================================================== */
+let drag=null, raf=0, pending=null;
+const TH=()=>stage.clientWidth*0.26;
+const THU=()=>stage.clientHeight*0.16;
+
+stage.addEventListener('pointerdown',e=>{
+  if(!S.stack.length) return;
+  const top=S.stack[0];
+  if(!top.el.contains(e.target)) return;
+  if(e.target.closest('.pinbtn')) return;
+  top.el.classList.remove('anim','fly');
+  try{top.el.setPointerCapture(e.pointerId)}catch(_){}
+  drag={id:e.pointerId,x0:e.clientX,y0:e.clientY,lx:e.clientX,lt:performance.now(),
+        t0:performance.now(),vx:0,vy:0,moved:0,dx:0,dy:0};
+});
+stage.addEventListener('pointermove',e=>{
+  if(!drag||e.pointerId!==drag.id) return;
+  const now=performance.now(), dt=now-drag.lt;
+  if(dt>0){ drag.vx=(e.clientX-drag.lx)/dt; drag.lx=e.clientX; drag.lt=now; }
+  drag.dx=e.clientX-drag.x0; drag.dy=e.clientY-drag.y0;
+  drag.moved=Math.max(drag.moved,Math.hypot(drag.dx,drag.dy));
+  pending=drag;
+  if(!raf) raf=requestAnimationFrame(paint);
+});
+function paint(){
+  raf=0; if(!pending||!S.stack.length) return;
+  const {dx,dy}=pending, top=S.stack[0];
+  const rot=Math.max(-16,Math.min(16,dx*0.05));
+  top.el.style.transform=`translate3d(${dx}px,${dy}px,0) rotate(${rot}deg)`;
+  const px=Math.min(1,Math.abs(dx)/TH()), py=Math.min(1,Math.max(0,-dy)/THU());
+  const up = -dy>Math.abs(dx)*1.25;
+  top.el.querySelector('.s-yes').style.opacity = up?0:(dx>0?px:0);
+  top.el.querySelector('.s-no').style.opacity  = up?0:(dx<0?px:0);
+  top.el.querySelector('.s-star').style.opacity = up?py:0;
+
+}
+stage.addEventListener('pointerup',end); stage.addEventListener('pointercancel',end);
+function end(e){
+  if(!drag||e.pointerId!==drag.id) return;
+  const d=drag; drag=null; pending=null;
+  if(raf){cancelAnimationFrame(raf);raf=0}
+  if(!S.stack.length) return;
+  const top=S.stack[0], dur=performance.now()-d.t0;
+  // 轻点 = 看全简历
+  if(d.moved<7 && dur<420){ snap(top.el); openSheet(top.card); return; }
+  const fling=Math.abs(d.vx)>0.62;
+  const up = -d.dy>Math.abs(d.dx)*1.25 && -d.dy>THU();
+  if(up) return decide('star');
+  if(Math.abs(d.dx)>TH() || fling) return decide(d.dx>0?'yes':'no');
+  snap(top.el);
+}
+function snap(el){
+  el.classList.add('anim'); el.style.transform=REST(0);
+  el.querySelectorAll('.stamp').forEach(s=>s.style.opacity=0);
+}
+
+/* ==================================================================
+   6. 判定 / 撤销
+   ================================================================== */
+function decide(v){
+  if(!S.stack.length) return;
+  const {el,card}=S.stack.shift();
+  const dw=(performance.now()-(S.topT||performance.now()))/1000;
+  S.decisions.push({card, v, anno:S.annos[card.id]||null, pred:predictP(card), dw, ch:card._ch||false});
+  card._ch=false;
+  S.topT=performance.now();
+  refit();
+  S.i++;
+  const w=stage.clientWidth, h=stage.clientHeight;
+  el.classList.remove('anim'); el.classList.add('fly');
+  el.querySelector('.s-yes').style.opacity = v==='yes'?1:0;
+  el.querySelector('.s-no').style.opacity  = v==='no'?1:0;
+  el.querySelector('.s-star').style.opacity= v==='star'?1:0;
+  el.style.transform = v==='star' ? `translate3d(0,${-h*1.15}px,0) rotate(-3deg)`
+    : `translate3d(${(v==='yes'?1:-1)*w*1.35}px,${h*0.09}px,0) rotate(${(v==='yes'?1:-1)*24}deg)`;
+  el.style.opacity='0';
+  setTimeout(()=>el.remove(),430);
+  layout(true); fill(); tick();
+  if(v==='star'){                                   // 趁热记亮点，可跳过，7 秒自动收
+    S.lastStar=card.name;
+    const sn=$('#starnote'); sn.style.display='flex'; $('#starnote-in').value='';
+    clearTimeout(S.snT); S.snT=setTimeout(()=>sn.style.display='none',7000);
+  }
+  if(navigator.vibrate) navigator.vibrate(9);
+}
+function undo(){
+  if(!S.decisions.length) return;
+  const last=S.decisions.pop(); S.i--; refit();
+  while(S.stack.length>2){ const x=S.stack.pop(); x.el.remove(); S.pool.unshift(x.card); }
+  const el=makeEl(last.card);
+  const w=stage.clientWidth,h=stage.clientHeight;
+  el.style.transform = last.v==='star' ? `translate3d(0,${-h*1.15}px,0)`
+    : `translate3d(${(last.v==='yes'?1:-1)*w*1.35}px,0,0)`;
+  el.style.zIndex=21; stage.appendChild(el);
+  S.stack.unshift({el,card:last.card});
+  el.getBoundingClientRect();
+  layout(true); tick();
+}
+function balanced(){
+  const n=S.decisions.length, P0=S.decisions.filter(d=>d.v!=='no').length;
+  return Math.min(P0,n-P0) > Math.max(2, n*0.12);
+}
+function portraitReady(){
+  if(S.decisions.length<10) return false;
+  // 全要/全否时命中率是常数分类器作弊 —— 没有对比就没有画像，一票否决
+  if(!balanced()) return false;
+  const A=analyze(false);
+  S._mp=0;
+  for(const d of Object.values(A.out)){
+    S._mp=Math.max(S._mp,d.power);
+    // 真人库非正交，效应量天然比合成正交标定（2.3+）稀释，阈值取 1.8
+    if(d.power<1.8) continue;
+    for(const l of Object.values(d.levels))
+      if(l.exp>=4&&(l.adj>=.655||l.adj<=.345)) return true;
+  }
+  return false;
+}
+function tick(){
+  const n=S.decisions.length;
+  $('#counter').textContent=`${n} / ${S.deck.length}`;
+  // 进度 = 离画像就绪还有多远，不是滑了多少张：
+  // 数量 × 平衡双因子，且只有 portraitReady 才到 100
+  const P0=S.decisions.filter(d=>d.v!=='no').length;
+  const ready0 = portraitReady();
+  $('#b-undo').disabled=!n;
+  // 解锁 ⇔ 真的有画像文字可看（存在能写进画像的显著结论）
+  const conv = n>=10 && balanced() && (hitRate(10)?.r||0)>=.75;
+  const unlocked = ready0;
+  $('#donebtn').disabled = !unlocked;
+  $('#donebtn').classList.toggle('ready', unlocked);
+  const nStar=S.decisions.filter(d=>d.v==='star').length+(S.importedStars||[]).length;
+  const nYes=S.decisions.filter(d=>d.v==='yes').length;
+  $('#starcount').textContent = nStar+nYes ? (nStar?`✦${nStar}`:'')+(nStar&&nYes?' · ':'')+(nYes?`${nYes} 可聊`:'') : '0';
+  learnUI();
+}
+
+/* ---- 「有没有在变好」：模型每张卡先猜、你再滑，猜中率就是答案 ---- */
+function learnUI(){
+  if(S.flash){ const w=$('#lwhy'); w.innerHTML=S.flash; w.style.display='block';
+    const now0=hitRate(10), st0=$('#lstat'), fl0=$('#lfill'), nm0=$('#lnum');
+    if(now0&&now0.n>=5){ nm0.textContent=`${now0.hit}/${now0.n}`; fl0.style.width=(now0.r*100)+'%'; }
+    return; }
+  const now=hitRate(10);
+  const st=$('#lstat'), fl=$('#lfill'), nm=$('#lnum'), why=$('#lwhy');
+  // 条 = 画像就绪度，与出画像解锁严格同步；满条即可出
+  const rn=S.decisions.length, rp=S.decisions.filter(d=>d.v!=='no').length;
+  const ready=portraitReady();
+  const balF2=rn?Math.min(1,Math.min(rp,rn-rp)/Math.max(3,rn*0.15)):0;
+  const rd = ready ? 1 : Math.min(.96,
+    Math.min(1,rn/10)*0.45 + balF2*0.2 + Math.min(1,(S._mp||0)/1.8)*0.35);
+  st.textContent='画像';
+  fl.style.width=(rd*100)+'%';
+  fl.style.background = ready?'var(--pick)':'var(--ink)';
+  nm.textContent = ready ? '✓ 可出' : Math.round(rd*100)+'%';
+  // 画像就绪 → 自动弹消息框，不等用户来点；与条上「✓ 可出」同一把尺，条满必弹
+  if(!S.ck && ready){
+    const A0=analyze(false);
+    const top=Object.values(A0.out).sort((a,b)=>b.power-a.power)[0];
+    const lv=Object.values(top.levels).sort((a,b)=>b.adj-a.adj);
+    {
+      S.ck=true;
+      $('#toastmsg').innerHTML = top.power>=2.2
+        ? `画像已就绪，最强信号<b>「${lv[0].label}」</b>。`
+        : `画像已就绪。`;
+      $('#toastacts').innerHTML=`
+        <button class="gh" id="tview" style="padding:9px 14px;font-size:13.5px">查看画像</button>
+        <button class="tbtn" id="tfilter">按画像筛库，继续滑</button>`;
+      $('#toast').classList.add('on');
+      const close=()=>$('#toast').classList.remove('on');
+      $('#tview').onclick=()=>{ close(); render(); show('result'); window.scrollTo(0,0); };
+      $('#tfilter').onclick=()=>{
+        close();
+        const before=S.pool.length;
+        const scored=S.pool.map(c=>({c,p:predictP(c)??.5})).sort((a,b)=>b.p-a.p);
+        S.pool=scored.filter(x=>x.p>=.55).map(x=>x.c);
+        if(S.pool.length<10) S.pool=scored.slice(0,10).map(x=>x.c);
+        why.innerHTML=`筛掉 ${before-S.pool.length} 份低分的，剩 ${S.pool.length} 份接近画像的。`;
+        why.style.display='block';
+        setTimeout(()=>{why.style.display='none'},2600);
+        tick();
+      };
+      setTimeout(()=>{ if($('#toast').classList.contains('on')) close(); }, 12000);
+    }
+  }
+  if(!now||now.n<5){ why.style.display='none'; return; }
+  const r=now.r;
+
+  // 全要死局：逼人左滑没用 —— 换问法。全要的人群里，强制排序是唯一还有信息量的问题
+  if(S.decisions.length>=10 && !balanced() && S.pool.length>=2
+     && (S.lastDuelAt==null || S.decisions.length-S.lastDuelAt>=3)){
+    const P0=S.decisions.filter(d=>d.v!=='no').length;
+    if(P0>S.decisions.length/2){                       // 全要才二选一；全否走原诊断
+      const scored=S.pool.map(c=>({c,p:predictP(c)??.5})).sort((a,b)=>b.p-a.p).slice(0,6);
+      const A2=scored[0].c, B2=scored[1].c;
+      const cell=c=>`<b>${c.name}</b><div class="dm">${c.school}${c.major?' · '+c.major:''}<br>${c.exp1.co}<br>${(c.exp1.lines[0]||'').slice(0,42)}</div>`;
+      $('#dA').innerHTML=cell(A2); $('#dB').innerHTML=cell(B2);
+      $('#duel').classList.add('on');
+      const pick=(win,lose)=>{
+        S.pool=S.pool.filter(x=>x!==win&&x!==lose);
+        S.decisions.push({card:win, v:'yes', pred:predictP(win), duel:true});
+        S.decisions.push({card:lose, v:'no', pred:predictP(lose), duel:true});
+        S.lastDuelAt=S.decisions.length;
+        $('#duel').classList.remove('on');
+        refit(); tick(); learnUI();
+      };
+      $('#dA').onclick=()=>pick(A2,B2);
+      $('#dB').onclick=()=>pick(B2,A2);
+      $('#dpA').onclick=()=>openSheet(A2);
+      $('#dpB').onclick=()=>openSheet(B2);
+      $('#dskip').onclick=()=>{ S.lastDuelAt=S.decisions.length; $('#duel').classList.remove('on'); };
+      why.style.display='none';
+      return;
+    }
+  }
+  // 诊断只在有明确问题时出现，一次只说一件事：现状 → 一个动作
+  const P0=S.decisions.filter(d=>d.v!=='no').length, N0=S.decisions.length-P0, n=S.decisions.length;
+  if(n>=10 && Math.min(P0,N0)<=Math.max(2,n*0.12)){
+    why.innerHTML=`${P0} 正 / ${N0} 负 —— 没有对比，出不了画像。${P0>N0?'左滑几个没那么想面的。':'右滑几个愿意聊 20 分钟的。'}`;
+    why.style.display='block'; return;
+  }
+  if(n>=12 && r<.6){
+    why.innerHTML=`猜不准 —— 还没看懂你在挑什么。点开简历，在打动你的那段上 ⊕ / ⊖。`;
+    why.style.display='block'; return;
+  }
+  if(n>=16 && Object.values(analyze(false).out).every(d=>d.power<2.2)){   // 标定：真信号 2.3+
+    why.innerHTML=`还没有稳定信号 —— 同类人给过相反判断。再滑一轮，或把某条<button id="w2f">设成硬性条件</button>。`;
+    why.style.display='block';
+    const w=$('#w2f'); if(w) w.onclick=()=>$('#filterbtn').click();
+    return;
+  }
+  why.style.display='none';
+}
+
+/* ---- 随时记一笔：匹配到维度就立刻进模型，不是留言板 ---- */
+function renderNotes(){
+  $('#notelist').innerHTML=(S.notes||[]).slice(-3).reverse().map(n=>
+    `<div class="noteitem"><span style="color:${n.sign<0?'var(--pass)':'var(--pick)'}">${n.sign<0?'−':'＋'}</span>
+     <span style="flex:1">${n.text}</span>
+     <em>${n.soft?'排序偏好':n.dim?DIMS[n.dim].L[n.lv]:'已记下'}</em></div>`).join('');
+}
+$('#starnote-skip').onclick=()=>{ $('#starnote').style.display='none'; clearTimeout(S.snT); };
+$('#starnote-in').addEventListener('keydown',e=>{
+  if(e.key!=='Enter') return;
+  const t=e.target.value.trim();
+  if(t){ S.starNotes=S.starNotes||{}; S.starNotes[S.lastStar]=t; }
+  $('#starnote').style.display='none'; clearTimeout(S.snT);
+});
+$('#tinput').addEventListener('input',e=>{ $('#tadd').disabled=!e.target.value.trim(); });
+$('#tinput').addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.value.trim()) $('#tadd').click(); });
+function addPreference(t, forcedSign, evidence){
+  const {acts,note}=applyThought(t);
+  const tag=note||tagNote(t);
+  S.notes=S.notes||[];
+  const entry={text:t, card:S.sheetCard?.name||S.stack[0]?.card.name||'', ...(tag||{sign:1})};
+  if(forcedSign!=null) entry.sign=forcedSign;
+  // 划选的负向且认不出维度 → 直接变排除词，真的影响检索
+  const ev=(evidence||t);
+  if(forcedSign===-1 && !entry.dim && ev.length<=16){
+    S.F.kws=S.F.kws||[]; S.F.kws.push({t:ev, neg:true});
+    acts.push(`排除词：「${ev}」`);
+  }
+  S.notes.push(entry);
+  const before=S.pool.length+S.stack.length;
+  reflowPool();
+  const after=S.pool.length+S.stack.length;
+  if(!acts.length && after<before) acts.push(`已剔除 ${before-after} 份「${entry.dim?DIMS[entry.dim].L[entry.lv]:'不符合'}」`);
+  if(acts.length){
+    const left=S.pool.length+S.stack.length;
+    S.flash = left===0
+      ? `已生效：${acts.join('；')}<br><b style="color:var(--pass)">池子被筛空了 —— 左上角松一条，或在记忆里删掉刚才这条。</b>`
+      : `已生效：${acts.join('；')}（池内剩 ${left} 份）`;
+    setTimeout(()=>{ S.flash=null; learnUI(); }, left===0?10000:6000);
+  }
+  refit(); saveMemNow(); renderNotes(); learnUI(); if($('#memlist')) renderMem();
+}
+// 简历详情里划选文字 → 弹批注框
+function showSelPop(){
+  const sel=getSelection();
+  if(!sel||sel.isCollapsed) return hideSelPop();
+  const body=$('#sh-body');
+  if(!body||!body.contains(sel.anchorNode)) return hideSelPop();
+  const t=sel.toString().trim().slice(0,60);
+  if(t.length<2) return hideSelPop();
+  S.selText=t;
+  const r=sel.getRangeAt(0).getBoundingClientRect();
+  const pop=$('#selpop');
+  pop.style.display='flex';
+  pop.style.left=Math.max(8,Math.min(innerWidth-260, r.left))+'px';
+  pop.style.top=Math.max(8, r.top-46)+'px';
+}
+function hideSelPop(){ $('#selpop').style.display='none'; }
+document.addEventListener('mouseup',e=>{ if(e.target.closest('#selpop')) return; setTimeout(showSelPop,10); });
+document.addEventListener('touchend',e=>{ if(e.target.closest('#selpop')) return; setTimeout(showSelPop,150); });
+$('#selpop-yes').onclick=()=>{ addPreference(S.selText, 1, S.selText); hideSelPop(); getSelection().removeAllRanges(); };
+$('#selpop-no').onclick =()=>{ addPreference(S.selText,-1, S.selText); hideSelPop(); getSelection().removeAllRanges(); };
+
+$('#tadd').onclick=()=>{
+  const t=$('#tinput').value.trim(); if(!t) return;
+  const {acts,note}=applyThought(t);
+  const tag=note||tagNote(t);
+  S.notes=S.notes||[];
+  S.notes.push({text:t, card:S.stack[0]?.card.name||'', ...(tag||{sign:1})});
+  const before=S.pool.length+S.stack.length;
+  reflowPool();
+  const after=S.pool.length+S.stack.length;
+  if(!acts.length && after<before) acts.push(`已剔除 ${before-after} 份「${tag&&tag.dim?DIMS[tag.dim].L[tag.lv]:'不符合'}」`);
+  if(acts.length){
+    const left=S.pool.length+S.stack.length;
+    S.flash = left===0
+      ? `已生效：${acts.join('；')}<br><b style="color:var(--pass)">池子被筛空了 —— 左上角松一条，或在记忆里删掉刚才这条。</b>`
+      : `已生效：${acts.join('；')}（池内剩 ${left} 份）`;
+    setTimeout(()=>{ S.flash=null; learnUI(); }, left===0?10000:6000);
+  }
+  $('#tinput').value=''; $('#tadd').disabled=true;
+  refit(); saveMemNow(); renderNotes(); learnUI(); if($('#memlist')) renderMem();
+};
+
+/* ==================================================================
+   7. 定点 ⊕ / ⊖ 与完整简历面板
+   ================================================================== */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('.pinbtn'); if(!b) return;
+  e.stopPropagation();
+  const host=b.closest('.card')||b.closest('#sh-body');
+  const cid = host.classList?.contains('card') ? +host.dataset.cid : S.sheetCard.id;
+  const key=b.dataset.pin, sign=+b.dataset.sign;
+  const a=S.annos[cid]||(S.annos[cid]={});
+  if(a[key]&&a[key].sign===sign) delete a[key];
+  else a[key]={sign,dim:b.dataset.dim,note:a[key]?.note||''};
+  const card=S.deck.find(c=>c.id===cid);
+  S.stack.forEach(s=>{if(s.card.id===cid) applyAnno(s.el,card)});
+  if(S.sheetCard&&S.sheetCard.id===cid) applyAnno($('#sh-body'),card);
+  refit(); tick();
+  if(navigator.vibrate) navigator.vibrate(6);
+});
+document.addEventListener('input',e=>{
+  if(!e.target.classList.contains('note')) return;
+  const cid=S.sheetCard.id, key=e.target.dataset.key;
+  const a=S.annos[cid]||(S.annos[cid]={});
+  a[key]=a[key]||{sign:0,dim:e.target.dataset.dim,note:''};
+  a[key].note=e.target.value;
+  // 写下的解释直接进 memory
+  const t=e.target.value.trim();
+  if(t.length>=4){
+    S.notes=S.notes||[];
+    const mk=`${cid}|${key}`;
+    let m=S.notes.find(x=>x.k===mk);
+    if(!m){ m={k:mk, card:S.sheetCard.name}; S.notes.push(m); }
+    m.text=t; m.dim=a[key].dim; m.lv=S.sheetCard.d[a[key].dim]; m.sign=a[key].sign||1;
+    saveMemNow(); renderNotes(); if($('#memlist')) renderMem();
+  }
+});
+
+function sec(dim,key,kicker,val,detail){
+  const a=(S.annos[S.sheetCard.id]||{})[key]||{};
+  return `<div class="sec" data-key="${key}" data-dim="${dim}">
+    <div class="bk">${kicker}</div><div class="bv">${val}</div>${detail?`<div class="bd">${detail}</div>`:''}
+    ${pinHTML(dim,key)}
+    <textarea class="note" data-key="${key}" data-dim="${dim}" placeholder="为什么？">${a.note||''}</textarea>
+  </div>`;
+}
+function openSheet(c){
+  S.sheetCard=c;
+  $('#sh-name').textContent=c.name;
+  $('#sh-meta').textContent=`${c.grad} · ${c.major} · ${TRACKS[c.tk].name}`;
+  if(c.real){
+    const D=DIMS, lv=k=>D[k].L[c.d[k]];
+    $('#sh-body').innerHTML=
+      sec('school','school','系统标签',
+        `<span class="tag">${lv('co')}</span> <span class="tag">${lv('z01')}</span> <span class="tag">${lv('proof')}</span> <span class="tag">${lv('track')}</span> <span class="tag">${lv('major')}</span> <span class="sens tag">${lv('school')}</span>`,
+        '')+
+      `<div class="sec"><div class="bk">简历原文 · 划选文字可打标</div>${
+        c.raw.split(/\n/).map(x=>x.trim()).filter(Boolean).map(l=>{
+          const esc=l.replace(/[<>&]/g,m=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[m]));
+          return /^【/.test(l) ? `<div class="rlh">${esc}</div>` : `<div class="rl"><span class="rlt">${esc}</span></div>`;
+        }).join('')}</div>`+
+      '';
+    applyAnno($('#sh-body'),c);
+    $('#sheet').classList.add('on'); return;
+  }
+  const li=x=>`<ul style="margin:0;padding:0">${x.map(l=>`<li>${l}</li>`).join('')}</ul>`;
+  const tkl=c.d.track==='same'?'同赛道':c.d.track==='near'?'邻近赛道':'跨界';
+  $('#sh-body').innerHTML=
+    sec('major','intent','求职意向',c.intent,'')+
+    sec('school','school','教育背景',`<span class="sens">${c.school}</span> · ${c.major} · 本科`,
+        `${c.grad}　GPA ${c.gpa}/4.0　专业排名前 ${c.rank}%<br>主修：${c.courses.join('、')}`)+
+    sec('co','co','主要实习',`${c.exp1.co}${c.exp1.role?' · '+c.exp1.role:''}`,`${c.exp1.dur}<br>${li(c.exp1.lines)}`)+
+    (c.exp2?sec('co','co2','第二段实习',`${c.exp2.co} · ${c.exp2.role}`,`${c.exp2.dur}<br>${li(c.exp2.lines)}`):'')+
+    sec('track','track','赛道',`${TRACKS[c.tk].name} —— 相对本岗位属于${tkl}`,'')+
+    sec('proof','proof','项目 / 作品',c.proj.title,c.proj.line)+
+    sec('major','skill','技能与证书',c.skill.map(s=>`<span class="tag">${s}</span>`).join(' '),
+        `${c.code.length?'编程：'+c.code.join('、')+'<br>':''}语言：英语${c.en==='工作'?'可工作':c.en==='日常'?'可日常沟通':'一般'}${c.jp?'、日语'+c.jp:''}${c.certs.length?'<br>证书：'+c.certs.join('、'):''}`)+
+    sec('z01','self','自述',`“${c.self}”`,'');
+  applyAnno($('#sh-body'),c);
+  $('#sheet').classList.add('on');
+}
+$('#sh-close').onclick=()=>$('#sheet').classList.remove('on');
+$('#sheet').addEventListener('pointerdown',e=>{ if(e.target.id==='sheet') $('#sheet').classList.remove('on'); });
+
+/* ==================================================================
+   8. 反推画像 —— 从揭示偏好算每个维度每个取值的偏好指数
+   ================================================================== */
+/* ---- 设计矩阵：每个维度 one-hot（第一个取值作参照） ---- */
+const FEATS=(()=>{const f=[];for(const dim in DIMS){const L=Object.keys(DIMS[dim].L);
+  for(let i=1;i<L.length;i++) f.push({dim,lv:L[i]});} return f})();
+const FIDX={}; FEATS.forEach((f,i)=>FIDX[f.dim+'|'+f.lv]=i);
+
+// 一句话想法 → 猜它在说哪个维度。这是「澄清需求」最轻量的形态。
+const HINTS=[
+  // 特定行话排前面，否则会被下面泛化的规则遮住（「基模的数据侧」曾被判成「有量化结果」）
+  [/基模|预训练|后训练|SFT|RLHF|微调|scaling ?law|模型侧/i,'major','cs',1],
+  [/agent|tool ?use|function ?call|RAG|召回|重排|向量库|多模态/i,'major','cs',1],
+  [/评测|benchmark|eval|测试集|评估体系|bad ?case|badcase/i,'proof','quant',1],
+  [/跑 ?case|看 ?trace|看日志|自己标|人工标注/i,'proof','quant',1],
+  [/只会写 ?PRD|不碰数据|不看 ?case|光有想法|只会点点点/i,'proof','desc',-1],
+  // 通用
+  [/0\s*[-到→]\s*1|从零|从 ?0|冷启动|独立负责|自己搭|第一版|白手/,'z01','yes',1],
+  [/迭代|维护|螺丝钉|接盘|只会走流程|按部就班/,'z01','no',-1],
+  [/原型|作品|figma|竞品分析|方法论/i,'proof','work',1],
+  [/量化|指标|转化|留存|增长了|提升了|拿得出.{0,3}结果|数据驱动|有数据/,'proof','quant',1],
+  [/大厂|字节|腾讯|阿里|美团|流程规范/,'co','big',1],
+  [/创业|小团队|抗压|什么都干|全能|野蛮生长/,'co','start',1],
+  [/竞品|对家|同行挖|直接能上手/,'co','rival',1],
+  [/同赛道|懂业务|行业理解|业务感/,'track','same',1],
+  [/跨界|外行|不懂我们这行/,'track','cross',-1],
+  [/技术|代码|工程|能跟研发对话|计算机|理工|源码/i,'major','cs',1],
+  [/商科|文科|纯文科|不懂技术/,'major','biz',-1],
+];
+/* 按岗位给几条起步的记忆。写不出来的时候，从否定别人开始最容易 */
+const MEMSEED={
+  'pm-ai':['要有模型评测经验，能自己设计评测集和 benchmark',
+           '做过 Agent 产品，说得清 tool use 的边界在哪',
+           '能自己跑 case 看 trace，分得清是模型问题还是工程问题',
+           '懂 RAG 的召回和重排，不是只会调 API',
+           '碰过基模的数据侧（SFT / 偏好数据）加分',
+           '不要只会写 PRD 不看 case 的'],
+  'pm':   ['要能从零把一个东西搭起来，不要只会跟迭代',
+           '要拿得出数据结果，不要只有职责描述',
+           '最好是同赛道来的，业务不用从头教'],
+  'dev':  ['在字节 Seed / 大模型团队干过，直接能上手',
+           '要有从 0 搭服务的经历，不是只会加接口',
+           '能看懂源码，不是只会调 API',
+           '有开源 PR 或技术博客加分',
+           '技术栈对口：K8s / 微服务 / 高并发'],
+  'qa':   ['要能把手工回归变成自动化',
+           '懂性能压测，会看火焰图',
+           '不要只会点点点的']
+};
+const memSeeds=()=>{
+  const k=ROLEKIND(S.role||'产品经理');
+  return k==='pm' ? (S.tk==='ai'?MEMSEED['pm-ai']:MEMSEED.pm) : MEMSEED[k];
+};
+/* 规则型偏好：不只是指向维度，而是真的改变筛选和权重 */
+function reflowPool(){
+  const decided=new Set(S.decisions.map(d=>d.card.name));
+  const inHand=new Set(S.stack.map(x=>x.card.name));
+  S.pool=S.deck.filter(c=>passes(c,S.F)&&!decided.has(c.name)&&!inHand.has(c.name));
+  for(let i=S.stack.length-1;i>=0;i--) if(!passes(S.stack[i].card,S.F)){ S.stack[i].el.remove(); S.stack.splice(i,1); }
+  S.Fdraft=JSON.parse(JSON.stringify(S.F));
+  fill(); layout(true);
+}
+/* 数值型软偏好：不进 one-hot 模型，作为排序加成，越高越靠前 */
+const SOFTN=[
+  [/GPA|绩点/i,               'gpa',    'GPA 越高越靠前',      c=>{const g=parseFloat(c.gpa);return g>0?Math.max(0,Math.min(1,(g-3)/1)):0.5}],
+  [/排名|名次|rank/i,          'rank',   '专业排名越靠前越靠前', c=>{const r=parseFloat(c.rank);return r>0?Math.max(0,Math.min(1,1-r/50)):0.5}],
+  [/实习(时间|时长)|经验(多|长)/,'months', '实习越久越靠前',      c=>Math.max(0,Math.min(1,(c.months||0)/12))],
+];
+function softBonus(c){
+  let b=0;
+  for(const n of (S.notes||[])){
+    if(!n.soft||n.sign<0) continue;
+    const sp=SOFTN.find(x=>x[1]===n.soft);
+    if(sp) b += 0.12*(n.boost||1)*sp[3](c);
+  }
+  return b;
+}
+const PRIO=[[/垂直|同赛道|赛道|业务理解/,'track','same'],[/0\s*[-到→]\s*1|从零|从 ?0|冷启动|自己搭/,'z01','yes'],
+            [/产出|结果|数据|量化|拿得出/,'proof','quant'],[/院校|学校|学历|名校/,'school','t1'],
+            [/竞品|对家/,'co','rival'],[/大厂/,'co','big'],[/创业|小团队|抗压/,'co','start'],
+            [/技术|代码|科班|工程/,'major','cs']];
+function applyThought(t){
+  const acts=[]; let note=null;
+  // 1) 数值硬规则：「最长的实习不超过 3 个月的不要」
+  let m=t.match(/(\d+)\s*个?(月|年)/);
+  if(m && /实习|经历|经验|年限/.test(t) && /不接受|不要|不看|排除|至少|不少于|以上|起步/.test(t)){
+    const n=+m[1];
+    const lo=/不超过|少于|不足|小于/.test(t) ? n+1 : n;   // 「不超过3个月的不要」⇒ ≥4
+    S.F.months[0]=Math.max(S.F.months[0],lo);
+    acts.push(`硬性条件：${SOC()?'工作年限':'实习总时长'} ≥ ${S.F.months[0]} ${m[2]==='年'||SOC()?'年':'个月'}`);
+  }
+  // 2) 放宽：「实习经验好的话，院校条件可以放宽」
+  if(/放宽|不卡|不限了|无所谓|不重要|不 ?care/i.test(t)){
+    for(const [re,k,label] of [[/院校|学校|学历/, 'school','院校'],[/英语|语言/,'lang','语言'],
+                               [/年龄/,'age','年龄'],[/技术栈|编程/,'code','技术栈']]){
+      if(!re.test(t)) continue;
+      if(k==='age') S.F.age=[18,63]; else S.F[k]=[];
+      acts.push(`${label}从硬性条件改为不限`);
+    }
+    for(const [re,dim,lv] of [[/实习经验|实习经历|经历好|做过事/,'proof','quant'],[/垂直|同赛道/,'track','same']])
+      if(re.test(t)){ note={dim,lv,sign:1,boost:2}; acts.push(`「${DIMS[dim].L[lv]}」加权补上`); break; }
+  }
+  // 3) 优先级：「实习经历垂直大于一切」
+  m=t.match(/大于一切|最重要|压倒|第一位|优先级最高|是关键/);
+  if(m){
+    for(const [re,dim,lv] of PRIO)
+      if(re.test(t)){ note={dim,lv,sign:1,boost:3}; acts.push(`「${DIMS[dim].L[lv]}」权重拉满`); break; }
+  } else if(/优先|加分|更好|倾向/.test(t) && !/放宽/.test(t)){
+    for(const [re,dim,lv] of PRIO)
+      if(re.test(t)){ note={dim,lv,sign:1,boost:2}; acts.push(`「${DIMS[dim].L[lv]}」加权`); break; }
+  }
+  // 3.5) 数值软偏好：「我喜欢 GPA top 的候选人」「实习时间长的优先」
+  if(/喜欢|偏爱|top|越.{0,4}越好|高的优先|长的优先|靠前的优先/i.test(t) && !/以上|不低于|≥/.test(t)){
+    for(const [re,key,label] of SOFTN.map(x=>[x[0],x[1],x[2]]))
+      if(re.test(t)){ note={soft:key, sign:1, boost:1}; acts.push(`排序偏好：${label}`); break; }
+  }
+  // 4) GPA：「GPA 3.5 以上」
+  m=t.match(/GPA\s*([\d.]+)\s*(以上|起|＋|\+)?/i);
+  if(m){ S.F.gpaMin=Math.max(S.F.gpaMin||0, parseFloat(m[1])); acts.push(`硬性条件：GPA ≥ ${S.F.gpaMin}`); }
+  // 5) 年龄：「25 岁以下」
+  m=t.match(/(\d{2})\s*岁\s*(以下|以内|以里)/);
+  if(m){ S.F.age=[S.F.age[0], Math.min(S.F.age[1], +m[1])]; acts.push(`硬性条件：年龄 ≤ ${m[1]} 岁`); }
+  // 6) 到岗：「每周至少到岗 4 天」
+  m=t.match(/(\d)\s*天.{0,6}(到岗|实习)|到岗.{0,6}(\d)\s*天/);
+  if(m && /至少|以上|起|必须|要求/.test(t) && !SOC()){
+    const n=+(m[1]||m[3]);
+    S.F.onsite=[3,4,5].filter(x=>x>=n);
+    acts.push(`硬性条件：每周到岗 ≥ ${n} 天`);
+  }
+  // 7) 英语：「英语必须流利」
+  if(/英语|口语/.test(t) && /必须|要好|流利|过关|工作语言|能开会/.test(t) && !/放宽/.test(t)){
+    S.F.lang=['en_work']; acts.push('硬性条件：英语可作为工作语言');
+  }
+  // 8) 原文硬检索：「不要外包背景的」「简历里要有 Kaggle」
+  m=t.match(/(?:不要|不看|排除|别.{0,3}给我)\s*([A-Za-z\u4e00-\u9fa5]{2,10}?)(?:背景|出身|经历)?的?$/);
+  if(m && !/月|年|岁|天|GPA/i.test(m[1])){
+    S.F.kws=S.F.kws||[]; S.F.kws.push({t:m[1],neg:true});
+    acts.push(`排除词：「${m[1]}」`);
+  }
+  m=t.match(/(?:必须有|要有|简历里要有|得有)\s*([A-Za-z\u4e00-\u9fa5][A-Za-z\u4e00-\u9fa5 ]{1,14})/);
+  if(m){
+    S.F.kws=S.F.kws||[]; S.F.kws.push({t:m[1].trim(),neg:false});
+    acts.push(`必含词：「${m[1].trim()}」`);
+  }
+  return {acts, note};
+}
+function tagNote(t){
+  for(const [re,dim,lv,sign] of HINTS) if(re.test(t)) return {dim,lv,sign};
+  return null;
+}
+function rowsOf(){
+  const rows=[];
+  // 你打字说出来的想法，和滑卡一样是证据，权重更高一点
+  const NL=(S.notes||[]).length;
+  for(const nt of (S.notes||[])){
+    if(!nt.dim) continue;
+    const posW=NL>1 ? 1+0.3*(1-(S.notes.indexOf(nt))/(NL-1)) : 1;   // 越靠前权重越高
+    const k=FIDX[nt.dim+'|'+nt.lv];
+    if(k!==undefined) rows.push({ix:[k], y:nt.sign>0?1:0, w:1.5*(nt.boost||1)*posW});
+    else for(const lv in DIMS[nt.dim].L){          // 参照档没有特征位，就反过来压其他档
+      const j=FIDX[nt.dim+'|'+lv];
+      if(j!==undefined) rows.push({ix:[j], y:nt.sign>0?0:1, w:1.0});
+    }
+  }
+  for(const d of S.decisions){
+    const ix=[];
+    for(const dim in DIMS){ const k=FIDX[dim+'|'+d.card.d[dim]]; if(k!==undefined) ix.push(k); }
+    // 犹豫时长是免费信号：秒滑的判断降权，盯了很久的加权
+    const dwF = d.dw==null?1 : d.dw>=12?1.25 : d.dw>=5?1.1 : d.dw<1.2?0.85 : 1;
+    rows.push({ix, y:d.v==='no'?0:1, w:(d.v==='star'?1.6:1)*dwF});
+    // 定点批注 → 一条只作用在那个维度上的合成观测，权重更高
+    for(const k in (d.anno||{})){
+      const an=d.anno[k]; if(!an.sign) continue;
+      const j=FIDX[an.dim+'|'+d.card.d[an.dim]];
+      rows.push({ix:j===undefined?[]:[j], y:an.sign>0?1:0, w:1.3});
+    }
+  }
+  return rows;
+}
+/* L2 正则的 logistic 回归，梯度下降。n 只有二三十，正则必须给足 */
+function fitRidge(rows,ys,lam,iters){
+  const P=FEATS.length, b=new Float64Array(P), n=Math.max(1,rows.length), lr=.55;
+  let b0=0;
+  for(let t=0;t<iters;t++){
+    const g=new Float64Array(P); let g0=0;
+    for(let i=0;i<rows.length;i++){
+      const r=rows[i]; let z=b0;
+      for(const j of r.ix) z+=b[j];
+      const e=(1/(1+Math.exp(-z))-ys[i])*r.w;
+      g0+=e; for(const j of r.ix) g[j]+=e;
+    }
+    b0-=lr*g0/n;
+    for(let j=0;j<P;j++) b[j]-=lr*(g[j]/n+lam*b[j]);
+  }
+  return {b,b0};
+}
+function spreadsOf(b){
+  const o={};
+  for(const dim in DIMS){
+    const v=Object.keys(DIMS[dim].L).map(lv=>{const k=FIDX[dim+'|'+lv]; return k===undefined?0:b[k];});
+    o[dim]={spread:Math.max(...v)-Math.min(...v), beta:v};
+  }
+  return o;
+}
+/* 边际统计：只用来给人看「右滑 9 人里 8 人是…」这种可核对的证据 */
+function marginals(dim){
+  const levels={};
+  for(const lv in DIMS[dim].L){
+    let wp=0,wn=0,np=0,nn=0;
+    for(const d of S.decisions){
+      if(d.card.d[dim]!==lv) continue;
+      const w=Math.abs(V[d.v]);
+      if(d.v==='no'){wn+=w;nn++} else {wp+=w;np++}
+    }
+    const exp=np+nn, rate=(wp+1.5)/(wp+wn+3);
+    levels[lv]={lv,label:DIMS[dim].L[lv],np,nn,exp,rate,adj:0.5+(rate-0.5)*exp/(exp+5)};
+  }
+  const seen=Object.values(levels).filter(l=>l.exp>=3).map(l=>l.adj);
+  return {levels, mspread: seen.length>1?Math.max(...seen)-Math.min(...seen):0};
+}
+
+/* perm=true 时跑置换检验：把你的判断随机打乱后重新拟合 N 次，
+   看「控制住其他维度之后」的效应有多容易碰巧出现 —— 把真偏好和小样本噪音分开 */
+function analyze(perm,it){
+  const D=S.decisions, rows=rowsOf(), ys=rows.map(r=>r.y);
+  const LAM=.015, IT=it||400;   // 观测与置换必须用同样的迭代数，否则零分布系统性偏低
+  const FT=fitRidge(rows,ys,LAM,IT), S0=spreadsOf(FT.b), out={};
+  for(const dim in DIMS){
+    const m=marginals(dim);
+    out[dim]={dim,label:DIMS[dim].label,levels:m.levels,
+              spread:m.mspread,        // 边际落差（给人看的证据）
+              power:S0[dim].spread,    // 偏效应（用来排序和判显著）
+              beta:S0[dim].beta, p:null, praw:null, z:null, sensitive:!!DIMS[dim].sensitive};
+  }
+  if(perm && D.length>=8){
+    // maxT 置换检验：拿「每轮所有维度里最大的效应」当零分布，
+    // 一次性控制住 6 个维度的多重比较，否则总有一个维度看着像有信号
+    const R=140, hits={}, raw={}, sum={}, sq={};
+    for(const dim in DIMS){ hits[dim]=0; raw[dim]=0; sum[dim]=0; sq[dim]=0; }
+    const arr=[...ys]; let sd=987654321;
+    const rnd=()=>{sd^=sd<<13;sd>>>=0;sd^=sd>>>17;sd^=sd<<5;sd>>>=0;return sd/4294967296};
+    for(let r=0;r<R;r++){
+      for(let i=arr.length-1;i>0;i--){const j=(rnd()*(i+1))|0;[arr[i],arr[j]]=[arr[j],arr[i]];}
+      const sp=spreadsOf(fitRidge(rows,arr,LAM,IT).b);
+      let mx=0; for(const dim in DIMS) mx=Math.max(mx,sp[dim].spread);
+      for(const dim in DIMS){
+        const v=sp[dim].spread;
+        if(v>=S0[dim].spread) raw[dim]++;
+        if(mx>=S0[dim].spread) hits[dim]++;
+        sum[dim]+=v; sq[dim]+=v*v;
+      }
+    }
+    for(const dim in DIMS){
+      out[dim].p=hits[dim]/R; out[dim].praw=raw[dim]/R;
+      // 用这个维度自己的零分布标准化：4 个取值的维度每格样本更少、效应天然更小，
+      // 不标准化的话统一阈值会系统性漏掉它们
+      const mu=sum[dim]/R, sd=Math.sqrt(Math.max(1e-9, sq[dim]/R-mu*mu));
+      out[dim].z=(S0[dim].spread-mu)/sd;
+    }
+  }
+  return {out, fit:FT, pos:D.filter(d=>d.v!=='no').length, neg:D.filter(d=>d.v==='no').length, n:D.length};
+}
+
+function evid(l,A){
+  return `你右滑或加★的 ${A.pos} 人当中，有 ${l.np} 人属于「${l.label}」；左滑的 ${A.neg} 人当中只有 ${l.nn} 人`;
+}
+const ZMIN=2.8;   // 标定见 CALIBRATION.md：假阳性 ~10%，检出力 ~78%
+function render(){
+  const A=analyze(true), dims=Object.values(A.out).sort((a,b)=>(b.z??-9)-(a.z??-9));
+  const strong=[],plus=[],out=[];
+  // 双重判据：偏效应够大 + 置换检验下不容易碰巧出现
+  // 双重判据。这组阈值是在 28 次「随机乱滑」和 30 次「已知真偏好」的模拟上标定的：
+  // 假阳性 ~8%，检出力 ~80%，学校误预警 0%
+  // 与出画像解锁（portraitReady）同一把尺：强证据（置换检验过）或弱证据（偏效应达标）。
+  // 弱证据不隐藏，用「方向对，再滑一轮更稳」的灰标透明分级 —— 说能出就必须真的有。
+  const sig=dims.filter(d=> (d.z!==null && d.z>=ZMIN && d.p<=.30) || d.power>=1.8);
+  const grade=d=> d.p==null?['样本不足','var(--ink3)'] : d.p<=.05?['很稳','var(--pick)']
+                : d.p<=.12?['比较可信','var(--ink)'] : ['方向对，再滑一轮更稳','var(--ink3)'];
+  for(const d of sig.slice(0,4)){
+    for(const l of Object.values(d.levels)){
+      if(l.exp<4) continue;
+      if(l.adj>=.655) strong.push({d,l}); else if(l.adj>=.575) plus.push({d,l});
+      else if(l.adj<=.345) out.push({d,l});
+    }
+    // 二值维度已经在「必要条件」里说过了，反面就是同义反复
+    if(Object.keys(d.levels).length===2 && strong.some(x=>x.d===d)){
+      for(let i=out.length-1;i>=0;i--) if(out[i].d===d) out.splice(i,1);
+    }
+  }
+  const bal=Math.min(A.pos,A.neg);
+  const conf = bal<=Math.max(2,A.n*0.12)?[`几乎全${A.pos>A.neg?'要':'否'}了 · 正负太不平衡，结论不成立`,'var(--pass)']
+             : A.n<12?['样本太少，先滑到 12 张','var(--pass)']
+             : A.n<20?['低置信 · 样本还少','var(--ink)']
+             : A.n<30?['中等置信','var(--pick)']:['高置信','var(--pick)'];
+  const notes=[];
+  for(const d of S.decisions) for(const k in (d.anno||{})){
+    const a=d.anno[k]; if(a.note?.trim()) notes.push({name:d.card.name,sign:a.sign,note:a.note.trim()});
+  }
+  for(const n of (S.notes||[])) notes.push({name:n.card||'随手记', sign:n.sign, note:n.text});
+  const schoolDim=A.out.school;
+  // 最高风险的一条结论，门槛给最严：必须是第一名 + 效应够大 + 不容易碰巧
+  const schoolHot=A.n>=14 && dims[0]===schoolDim && schoolDim.z>=ZMIN && schoolDim.p<=.20;
+  const weak=dims.filter(d=>!sig.includes(d)).map(d=>d.label);
+  const cfnd=dims.filter(d=>!sig.includes(d)&&d.spread>=.24).map(d=>d.label);
+
+  // 捞人策略
+  const kw=new Set(), cos=new Set();
+  for(const {d,l} of [...strong,...plus]){
+    if(d.dim==='z01'&&l.lv==='yes') ['从0到1','0-1','独立负责','第一版','冷启动'].forEach(x=>kw.add(x));
+    if(d.dim==='proof'&&l.lv==='quant') ['提升','转化率','留存','数据'].forEach(x=>kw.add(x));
+    if(d.dim==='proof'&&l.lv==='work') ['原型','竞品分析','用户访谈'].forEach(x=>kw.add(x));
+    if(d.dim==='major'&&l.lv==='cs') ['计算机','软件工程','人工智能'].forEach(x=>kw.add(x));
+    if(d.dim==='major'&&l.lv==='biz') ['市场营销','心理学','新闻传播'].forEach(x=>kw.add(x));
+    if(d.dim==='co') (l.lv==='rival'?TRACKS[S.tk].rival:l.lv==='start'?['A轮','天使轮','Pre-A']:CO[l.lv]||[]).forEach(x=>cos.add(x));
+    if(d.dim==='track'&&l.lv==='same') kw.add(TRACKS[S.tk].name);
+  }
+  if(!kw.size) kw.add('产品实习');
+
+
+  // 硬性条件是「你自己说的」，滑卡结果是「你手替你说的」—— 两者必须分开摆
+  const hard=[];
+  {
+    const F=S.F, D=FDEF;
+    if(F.age[0]>D.age.min||F.age[1]<D.age.max) hard.push(['年龄',`${F.age[0]}–${F.age[1]}${F.age[1]>=D.age.max?'+':''} 岁`]);
+    if(F.school.length) hard.push(['院校门槛',F.school.map(v=>D.school.opts.find(o=>o[0]===v)[1]).join(' / ')]);
+    if(F.lang.length)   hard.push(['语言',F.lang.map(v=>D.lang.opts.find(o=>o[0]===v)[1]).join(' / ')]);
+    if(F.code.length)   hard.push(['编程语言（全都要）',F.code.join(' + ')]);
+    if(F.months[0]>D.months.min||F.months[1]<D.months.max) hard.push(['实习总时长',`${F.months[0]}–${F.months[1]}${F.months[1]>=D.months.max?'+':''} 个月`]);
+    if(F.onsite.length) hard.push(['每周可到岗',F.onsite.map(v=>v+' 天').join(' / ')]);
+    for(const k of F.kws||[]) hard.push([k.neg?'排除词':'必含词', k.t]);
+    if(F.gpaMin>0) hard.push(['GPA', `≥ ${F.gpaMin}`]);
+  }
+  const pr = REAL() && S.realTotal ? S.deck.length/S.realTotal : passRate(S.F);
+  const pool = REAL() ? S.deck.length : Math.round(pr*(S.deck0||S.deck).length);
+  const hardHTML = hard.length ? `<div class="rcard"><div class="rh">硬性条件</div>
+    ${hard.map(([k,v])=>`<div class="item"><div class="iv" style="font-size:14.5px">${k}<span style="color:var(--ink3);font-weight:400"> — ${v}</span></div></div>`).join('')}
+    <div class="ev" style="margin-top:10px">${REAL()
+      ? `${S.realTotal} 份里 <b>${pool}</b> 份能过。`
+      : `<b>${(pr*100).toFixed(0)}%</b> 能过。`}
+    ${pr<0.25?'<b style="color:var(--pass)">卡掉了四分之三以上 —— 确认每条都是「没有就不能干」。</b>':''}
+    ${S.F.age[0]>18||S.F.age[1]<63?'<br>年龄别写进对外 JD，换成年限带宽。':''}</div></div>` : '';
+
+  const starred=S.decisions.filter(d=>d.v==='star').map(d=>d.card);
+  // 约面名单：可拖动排优先级、展开看简历、备注亮点
+  S.starOrder=(S.starOrder||[]).filter(n=>starred.some(c=>c.name===n));
+  for(const c of starred) if(!S.starOrder.includes(c.name)) S.starOrder.push(c.name);
+  S.starNotes=S.starNotes||{};
+  const ordered=S.starOrder.map(n=>starred.find(c=>c.name===n));
+  const starHTML = (REAL()&&ordered.length) ? `<div class="rcard"><div class="rh">✦ 直接约面 · 拖动排优先级</div>
+    ${ordered.map((c,i)=>`<div class="srow" draggable="true" data-sn="${c.name}">
+      <div class="sr-head">
+        <span class="sr-grip">⠿</span><span class="sr-rank">${i+1}</span>
+        <span class="sr-name">${c.name}</span>
+        <span class="sr-meta">${c.school} · ${c.exp1.co}</span>
+        <span class="sr-chev">⌄</span>
+      </div>
+      <div class="sr-body">
+        <div class="sr-cv">${(c.raw||'').split('\n').slice(0,7).join('\n').replace(/[<>&]/g,m=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[m]))}</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="sr-note" data-sn="${c.name}" placeholder="亮点备注：为什么点名要他"
+            value="${(S.starNotes[c.name]||'').replace(/"/g,'&quot;')}">
+          <button class="tbtn sr-open" data-sn="${c.name}">全简历</button>
+        </div>
+      </div>
+    </div>`).join('')}</div>` : '';
+
+  if(!strong.length&&!plus.length&&!out.length){
+    $('#rwrap').innerHTML=`
+      <h1 class="rtitle">${S.role} · ${S.year}</h1>
+      <div class="conf"><span class="dot" style="background:${conf[1]}"></span>${conf[0]} · 判断了 ${A.n} 人（${A.pos} 正 / ${A.neg} 负）</div>
+      ${starHTML}
+      <div class="rcard"><div class="ev" style="font-size:14px">还没滑出稳定偏好。</div></div>
+      <div class="rowbtns">
+        <button class="gh" id="more">继续滑</button>
+        <button class="gh alt" id="restart">换个岗位</button>
+      </div>`;
+    $('#more').onclick=()=>{ show('deck'); };
+    $('#restart').onclick=()=>location.reload();
+    return;
+  }
+
+  const row=(x,color)=>`<div class="item"><div class="iv">${x.d.label}：${x.l.label}</div>
+    <div class="ev"><span style="color:${grade(x.d)[1]}">● ${grade(x.d)[0]}</span>${x.d.p!=null?` · 打乱重算 140 次，碰巧出现的概率 ${(x.d.p*100)|0}%`:''}
+      <br>${evid(x.l,A)}<br>偏好指数 ${(x.l.rate*100).toFixed(0)}%</div>
+    <div class="bar"><i style="width:${(x.l.rate*100).toFixed(0)}%;background:${color}"></i></div></div>`;
+
+  $('#rwrap').innerHTML=`
+    <h1 class="rtitle">${S.role} · ${S.year}</h1>
+    <div class="conf"><span class="dot" style="background:${conf[1]}"></span>${conf[0]} · 判断了 ${A.n} 人（${A.pos} 正 / ${A.neg} 负）</div>
+
+    ${starHTML}
+    ${hardHTML}
+    ${strong.length?`<div class="rcard"><div class="rh"><svg class="sparkle" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c.5 6.3 5.2 11 11.5 11.5v1C17.2 13 12.5 17.7 12 24h-1C10.5 17.7 5.8 13 -.5 12.5v-1C5.8 11 10.5 6.3 11 0h1z"/></svg> 必要条件</div>${strong.map(x=>row(x,'var(--pick)')).join('')}</div>`:''}
+    ${plus.length?`<div class="rcard"><div class="rh">加分项</div>${plus.map(x=>row(x,'var(--ink)')).join('')}</div>`:''}
+    ${out.length?`<div class="rcard"><div class="rh">不要什么</div>${out.map(x=>row(x,'var(--pass)')).join('')}</div>`:''}
+
+    ${schoolHot?`<div class="rcard warn"><div class="rh" style="color:var(--pass)">⚠︎ 学校信号异常</div>
+      <div class="ev" style="font-size:13.5px;color:var(--ink2)">学校是<b>随机分配</b>的对照变量，本不该有规律，却是全模型最强信号（碰巧概率 ${(schoolDim.p*100).toFixed(0)}%）—— 你在无意识按学校筛人。<br><br>接下来会发几张只差学校的对照卡，继续滑就能分清。</div></div>`:''}
+
+    ${weak.length?`<div class="rcard"><div class="rh">还没看出规律</div><div class="ev" style="font-size:13.5px">${weak.join('、')} —— 继续滑会自动做对照。
+      ${cfnd.length?`<br><br><b>注意：${cfnd.join('、')}</b> 单看有规律，控制其他维度后消失 —— 只是和真信号相关，别写进标准。`:''}</div></div>`:''}
+    ${notes.length?`<div class="rcard"><div class="rh">你的原话</div>${notes.slice(0,6).map(n=>
+      `<div class="quote"><b style="color:${n.sign>0?'var(--pick)':'var(--pass)'}">${n.sign>0?'＋':'−'} ${n.name}</b> ${n.note}</div>`).join('')}</div>`:''}
+
+    <div class="rcard"><div class="rh">捞人</div>
+      <div class="ev" style="font-size:13.5px;color:var(--ink2)">库内已按画像排好序。</div>
+      ${cos.size?`<div class="item" style="margin-top:10px"><div class="iv" style="font-size:14px">外部渠道优先看</div>
+        <div style="margin-top:8px">${[...cos].map(k=>`<span class="tag">${k}</span>`).join(' ')}</div></div>`:''}
+    </div>
+
+    <div class="rcard"><div class="rh">画像 · 点击可改
+      <button class="tbtn" id="aipara" style="float:right;margin-top:-6px">AI 成文</button></div>
+      <div id="para" contenteditable="true" style="font-size:15px;line-height:1.75;color:var(--ink)">${paragraph(strong,plus,out,notes)}</div>
+    </div>
+
+    <div class="ev" style="margin-bottom:10px;color:var(--ink4)">本岗位偏好已自动保存。</div>
+    <div class="rowbtns">
+      <button class="gh" id="tocv">看全库排序 →</button>
+      <button class="gh alt" id="more">继续滑</button>
+      <button class="gh alt" id="restart">换个岗位</button>
+    </div>`;
+
+  // 浏览器直调 Anthropic API（官方支持 CORS）：静态页也能用 LLM 写画像
+  $('#aipara').onclick=async()=>{
+    let k=localStorage.getItem('persona_apikey');
+    if(!k){ k=prompt('粘贴 Anthropic API key（只存在你的浏览器里）'); if(!k) return; localStorage.setItem('persona_apikey',k.trim()); }
+    const btn=$('#aipara'); btn.textContent='生成中…'; btn.disabled=true;
+    const facts={
+      岗位:`${S.role}${S.subKnown?' · '+S.sub:''} · ${S.year} · ${TRACKS[S.tk].name}`,
+      硬性条件:hard.map(([a,b2])=>`${a}:${b2}`).join('；')||'无',
+      必要:strong.map(x=>`${x.d.label}=${x.l.label}(偏好${(x.l.rate*100)|0}%)`).join('；')||'无',
+      加分:plus.map(x=>`${x.d.label}=${x.l.label}`).join('；')||'无',
+      排除:out.map(x=>`${x.d.label}=${x.l.label}`).join('；')||'无',
+      面试官原话:notes.slice(0,5).map(n=>`${n.sign>0?'+':'-'}「${n.note}」`).join('；')||'无',
+      点名约面:starred.map(c=>c.name+'('+c.exp1.co+')').join('、')||'无'
+    };
+    try{
+      const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+        headers:{'content-type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01',
+                 'anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:500,
+          messages:[{role:'user',content:
+`你是资深招聘顾问。根据面试官滑简历揭示出的偏好数据，写一份可以直接发给 HR 的候选人画像。
+要求：第一行是一句引语体画像（谁+最关键特质）；然后 2-3 句说清必须有什么、什么加分、什么直接排除，引用面试官原话（若有）；最后一句写"这个人进来要解决的问题"留白让 HM 补。总共不超过 120 字，说人话，不要列表不要客套。
+数据：${JSON.stringify(facts)}`}]})});
+      const j=await r.json();
+      const txt=j?.content?.[0]?.text;
+      if(txt) $('#para').innerHTML=txt.replace(/\n/g,'<br>');
+      else throw new Error(j?.error?.message||'空返回');
+    }catch(e){
+      $('#para').insertAdjacentHTML('beforeend',`<div class="ev" style="color:var(--pass);margin-top:8px">AI 调用失败：${String(e.message).slice(0,80)}（key 可在浏览器 localStorage 删 persona_apikey 重设）</div>`);
+    }
+    btn.textContent='AI 成文'; btn.disabled=false;
+  };
+
+  // 约面名单交互：拖排 / 展开 / 备注
+  let dragSN=null;
+  $$('#rwrap .srow').forEach(row=>{
+    row.addEventListener('dragstart',e=>{ dragSN=row.dataset.sn; e.dataTransfer.effectAllowed='move'; });
+    row.addEventListener('dragover',e=>{ e.preventDefault(); row.classList.add('dragover'); });
+    row.addEventListener('dragleave',()=>row.classList.remove('dragover'));
+    row.addEventListener('drop',e=>{
+      e.preventDefault(); row.classList.remove('dragover');
+      if(!dragSN||dragSN===row.dataset.sn) return;
+      const o=S.starOrder, from=o.indexOf(dragSN), to=o.indexOf(row.dataset.sn);
+      o.splice(to,0,o.splice(from,1)[0]);
+      render(); window.scrollTo(0,0);
+    });
+    row.querySelector('.sr-head').addEventListener('click',()=>row.classList.toggle('open'));
+  });
+  $$('#rwrap .sr-note').forEach(inp=>{
+    inp.addEventListener('click',e=>e.stopPropagation());
+    inp.addEventListener('input',e=>{ S.starNotes[inp.dataset.sn]=inp.value; });
+  });
+  $$('#rwrap .sr-open').forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    const c=S.decisions.find(d=>d.card.name===b.dataset.sn)?.card;
+    if(c) openSheet(c);
+  });
+  $('#tocv').onclick=openCV;
+  autoSavePreset();
+  $('#more').onclick=()=>{ show('deck'); };
+  $('#restart').onclick=()=>location.reload();
+}
+function paragraph(strong,plus,out,notes){
+  const sl=strong.map(x=>x.l.label), pl=plus.map(x=>x.l.label), ol=out.map(x=>x.l.label);
+  if(!sl.length&&!pl.length&&!ol.length)
+    return '还没滑出稳定的偏好，画像写不实 —— 再滑一轮，或点开简历在具体段落上 ⊕ / ⊖。';
+  if(!sl.length&&!pl.length){
+    // 只有排除项也是有效画像：先说清不要谁
+    const role2=`${S.role}${S.sub&&S.subKnown?' · '+S.sub:''}`;
+    return `<b style="font-family:var(--display);font-size:17px">「先排掉${ol.join('、')}的。」</b><br><br>`
+      +`这个${role2}岗，你目前最确定的是不要${ol.join('、')}的人 —— 要什么还在浮现，继续滑或在简历上划选打标。`;
+  }
+  const role=`${S.role}${S.sub?' · '+S.sub:''}`;
+  const who = S.year==='社招' ? role : `${S.role}${S.year==='实习'?'实习生':'校招生'}`;
+  const hardBits=[];
+  if(S.F.school.length) hardBits.push(S.F.school.map(v=>FDEF.school.opts.find(o=>o[0]===v)[1]).join('/'));
+  if(S.F.code.length) hardBits.push('会 '+S.F.code.join('、'));
+  if(S.F.lang.length) hardBits.push(S.F.lang.map(v=>FDEF.lang.opts.find(o=>o[0]===v)[1]).join('、'));
+  const quote=(notes||[]).find(n=>n.sign>0&&(n.note||'').length>=6);
+  let t=`<b style="font-family:var(--display);font-size:17px">「一个${sl.join('、')}的${who}。」</b><br><br>`;
+  t+=`必须是${sl.join('、')}的人`;
+  t+= pl.length?`；同时${pl.join('、')}的直接进面。`:'。';
+  if(ol.length) t+=`${ol.join('、')}的不看。`;
+  if(hardBits.length) t+=`门槛：${hardBits.join('，')}。`;
+  if(quote) t+=`<br><br>用你自己的话说 ——「${quote.note}」（评 ${quote.name} 时说的）。`;
+  t+=`<br><br>这个人要解决的问题：<span style="color:var(--ink3)">（这句只有你能写）</span>`;
+  return t;
+}
+
+/* ---- 在线预测：模型先猜你下一张怎么滑，猜中率就是「有没有变好」 ---- */
+let FIT=null;
+function refit(){
+  const rows=rowsOf();
+  FIT = rows.length>=4 ? fitRidge(rows,rows.map(r=>r.y),.015,400) : null;
+}
+function predictP(card){
+  if(!FIT) return null;
+  let z=FIT.b0;
+  for(const dim in DIMS){ const k=FIDX[dim+'|'+card.d[dim]]; if(k!==undefined) z+=FIT.b[k]; }
+  return Math.min(.99, 1/(1+Math.exp(-z)) + softBonus(card));
+}
+function hitRate(win){
+  const d=S.decisions.filter(x=>x.pred!=null&&!x.ch&&!x.duel).slice(-win);
+  if(!d.length) return null;
+  const hit=d.filter(x=>(x.pred>=.5)===(x.v!=='no')).length;
+  return {hit, n:d.length, r:hit/d.length};
+}
+
+/* ==================================================================
+   8.5 硬性条件筛选 —— 卡死的放这里，说不清的交给滑卡
+   ================================================================== */
+const FDEF={
+  age:   {t:'range', ico:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>', label:'年龄',       min:18,max:63, unit:'岁',
+          },
+  school:{t:'chips', ico:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2.5 9 12 14l9.5-5L12 4z"/><path d="M6 11v4.5c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V11"/></svg>', label:'院校门槛',
+          opts:[['t1','清北 / 华五'],['t2','其余 985 / 211'],['sea','海外 QS100']]},
+  lang:  {t:'chips', ico:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18M9 3v2M11 5c0 5-3 8-7 9M8 9c0 3 3 5.5 6 6.5"/><path d="M13 21l4-10 4 10M14.6 17.5h4.8"/></svg>', label:'语言', t2:'langsel',
+          opts:[['en_work','英语 · 可作为工作语言'],['en_daily','英语 · 日常会话'],['jp','日语 · N1/N2'],['fr','法语 · 熟练']]},
+  code:  {t:'chips', ico:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m8.5 8.5-4 3.5 4 3.5M15.5 8.5l4 3.5-4 3.5M13.5 6l-3 12"/></svg>', label:'编程语言',
+          opts:[['Python','Python'],['SQL','SQL'],['Java','Java'],['Go','Go'],['JS/TS','JS/TS'],['C++','C++']]},
+  months:{t:'range', soc:{label:'工作年限',unit:'年'}, ico:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>', label:'实习总时长', min:0,max:14, unit:'个月'},
+  onsite:{t:'chips', ico:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V6.5a2 2 0 0 1 1.3-1.9l7-2.4A1.5 1.5 0 0 1 14.5 3.6V21M14.5 21V10h4a1.5 1.5 0 0 1 1.5 1.5V21M2.5 21h19M7.5 8h3M7.5 12h3M7.5 16h3"/></svg>', label:'每周可到岗', opts:[[3,'3 天'],[4,'4 天'],[5,'5 天']]}
+};
+const blankF=()=>({age:[18,63], school:[], lang:[], langText:'', code:[], months:[0,14], onsite:[], kws:[], gpaMin:0});
+/* 真人模式：牌堆来自真实简历，硬性条件只能筛不能造 */
+const REAL=()=>!!(S.deck&&S.deck.length&&S.deck[0].real);
+S.F=blankF(); S.Fdraft=blankF();
+
+function cardText(c){
+  if(c._st) return c._st;
+  c._st = (c.raw || [c.school,c.major,c.exp1.co,c.exp1.role,...(c.exp1.lines||[]),
+    ...(c.exp2?[c.exp2.co,c.exp2.role,...(c.exp2.lines||[])]:[]),
+    c.proj?c.proj.title+' '+c.proj.line:'', (c.skill||[]).join(' '), (c.code||[]).join(' '), c.self||''
+  ].join(' ')).toLowerCase();
+  return c._st;
+}
+function memExcluded(c){
+  for(const x of (S.notes||[]))
+    if(x.sign<0&&x.dim&&x.lv&&c.d[x.dim]===x.lv) return x;
+  return null;
+}
+function passes(c,F){
+  if(memExcluded(c)) return false;
+  for(const k of (F.kws||[])){
+    const hit=cardText(c).includes(k.t.toLowerCase());
+    if(k.neg? hit : !hit) return false;
+  }
+  if(F.gpaMin>0){ const g=parseFloat(c.gpa); if(g>0&&g<F.gpaMin) return false; }
+  if(c.age<F.age[0]||c.age>F.age[1]) return false;
+  if(c.months<F.months[0]||c.months>F.months[1]) return false;
+  if(F.school.length && !F.school.includes(c.d.school)) return false;
+  if(F.onsite.length && !F.onsite.includes(c.onsite)) return false;
+  if(F.code.length && !F.code.every(x=>c.code.includes(x))) return false;   // 「且」
+  if(F.lang.length && !F.lang.some(x=>                                       // 「或」
+      x==='en_work' ? c.en==='工作' : x==='en_daily' ? (c.en==='工作'||c.en==='日常') : x==='fr' ? !!c.fr : !!c.jp)) return false;
+  return true;
+}
+const activeCount=F=>{
+  let n=0;
+  if(F.age[0]>18||F.age[1]<63) n++;
+  if(F.months[0]>0||F.months[1]<14) n++;
+  for(const k of ['school','lang','code','onsite']) if(F[k].length) n++;
+  if(F.kws&&F.kws.length) n++;
+  if(F.gpaMin>0) n++;
+  return n;
+};
+
+/* 筛选项跟着池子的实际分布走：没有差异的维度不该让人白选 */
+function optHit(k,v,c){
+  if(k==='school') return c.d.school===v;
+  if(k==='onsite') return c.onsite===v;
+  if(k==='code'){ const pl=(c.code||[]).concat(c.skill||[]); return pl.some(y=>String(y).includes(v)); }
+  if(k==='lang') return v==='en_work' ? c.en==='工作' : v==='en_daily' ? c.en!=='弱' : v==='fr' ? !!c.fr : !!c.jp;
+  return false;
+}
+function optCount(k,v){ return (S.deck||[]).filter(c=>optHit(k,v,c)).length; }
+function fdefOf(k,d0){
+  const d={...d0};
+  if(k==='months'&&SOC()){ d.label=d.soc.label; d.unit=d.soc.unit; }
+  if(k==='code'&&ROLEKIND(S.role)!=='pm'){
+    d.label='技术栈';
+    d.opts=[...d0.opts,['K8s','K8s'],['Redis','Redis'],['React','React'],['大模型','大模型训练/推理']];
+  }
+  return d;
+}
+function renderFilters(){
+  const F=S.Fdraft;
+  $('#fbody').innerHTML=Object.entries(FDEF)
+    .filter(([k])=>!(k==='onsite'&&S.year!=='实习'))
+    .map(([k,d0])=>{ const d=fdefOf(k,d0);
+    const enLv=F.lang.includes('en_work')?'en_work':F.lang.includes('en_daily')?'en_daily':'';
+    const body = d.t2==='langsel'
+      ? `<div class="lgrow"><span class="lgk">英语</span><div class="chips">
+           ${[['','不限'],['en_daily','日常会话'],['en_work','可作为工作语言']].map(([v,l])=>
+             `<button class="fchip" data-lg="en" data-v="${v}" aria-pressed="${enLv===v}">${l}${v&&(S.deck||[]).length?`<i>${optCount('lang',v)}</i>`:''}</button>`).join('')}
+         </div></div>
+         <div class="lgrow"><span class="lgk">日语</span><div class="chips">
+           ${[['','不限'],['jp','N1 / N2']].map(([v,l])=>
+             `<button class="fchip" data-lg="jp" data-v="${v}" aria-pressed="${(F.lang.includes('jp')?'jp':'')===v}">${l}${v&&(S.deck||[]).length?`<i>${optCount('lang',v)}</i>`:''}</button>`).join('')}
+         </div></div>
+         <div class="lgrow"><span class="lgk">法语</span><div class="chips">
+           ${[['','不限'],['fr','熟练']].map(([v,l])=>
+             `<button class="fchip" data-lg="fr" data-v="${v}" aria-pressed="${(F.lang.includes('fr')?'fr':'')===v}">${l}${v&&(S.deck||[]).length?`<i>${optCount('lang',v)}</i>`:''}</button>`).join('')}
+         </div></div>`
+      : d.t==='chips'
+      ? (()=>{
+          const cnt=d.opts.map(([v])=>optCount(k,v));
+          const alive=d.opts.filter((_,i)=>cnt[i]>0);
+          if((S.deck||[]).length && alive.length<=1)
+            return `<div class="ev">池内 ${S.deck.length} 份${alive.length?`全部是「${alive[0][1]}」`:'无此项信息'}，无需筛</div>`;
+          return `<div class="chips">${d.opts.map(([v,l],i)=>
+            `<button class="fchip${cnt[i]===0?' z':''}" data-f="${k}" data-v="${v}" aria-pressed="${F[k].map(String).includes(String(v))}">${l}<i>${(S.deck||[]).length?cnt[i]:''}</i></button>`).join('')}</div>`;
+        })()
+      : (()=>{
+          const vals=(S.deck||[]).map(c=>k==='age'?c.age:c.months);
+          const mn=vals.length?Math.min(...vals):null, mx=vals.length?Math.max(...vals):null;
+          if(vals.length&&mn===mx)
+            return `<div class="ev">池内全部是 ${mn} ${d.unit}，无需筛</div>`;
+          return `${vals.length?`<div class="ev" style="margin-bottom:6px">池内 ${mn}–${mx} ${d.unit}</div>`:''}
+         <div class="rngval"><div>${F[k][0]}<span> ${d.unit}</span></div><div>${F[k][1]}${F[k][1]>=d.max?'+':''}<span> ${d.unit}</span></div></div>`;
+        })()+`
+         <div class="rng" data-f="${k}">
+           <div class="track"></div><div class="fillbar"></div>
+           <input type="range" min="${d.min}" max="${d.max}" value="${F[k][0]}" data-i="0">
+           <input type="range" min="${d.min}" max="${d.max}" value="${F[k][1]}" data-i="1">
+         </div>`;
+    const on = d.t==='chips' ? F[k].length>0 : (F[k][0]>d.min||F[k][1]<d.max);
+    return `<div class="fsec">
+      <div class="fhead"><div class="fico">${d.ico}</div><div class="ftitle">${d.label}</div>
+        <div class="fsub">${on?'已设':(d.hint||'不限')}</div></div>
+      ${body}${d.note?`<div class="fnote">${d.note}</div>`:''}</div>`;
+  }).join('');
+  $$('#fbody .rng').forEach(paintRange);
+  updateCount();
+}
+function paintRange(r){
+  const [lo,hi]=[...r.querySelectorAll('input')];
+  const min=+lo.min, max=+lo.max, f=r.querySelector('.fillbar');
+  const a=Math.min(+lo.value,+hi.value), b=Math.max(+lo.value,+hi.value);
+  const pct=v=>(v-min)/(max-min);
+  f.style.left = `calc(9px + ${pct(a)} * (100% - 18px))`;
+  f.style.width= `calc(${pct(b)-pct(a)} * (100% - 18px))`;
+}
+function passRate(F){
+  const ref=S.deck0||S.deck;
+  return ref.length ? ref.filter(c=>passes(c,F)).length/ref.length : 1;
+}
+function updateCount(){
+  if(REAL()){
+    const n=S.deck.filter(c=>passes(c,S.Fdraft)).length, tot=S.deck.length, thin=n<24;
+    $('#fcount').className='fcount'+(thin?' thin':'');
+    $('#fcount').innerHTML = `<b>${n}</b> / ${tot} 份符合`+
+      (thin?`<br><span style="color:var(--pass)">不足 24 份，建议放宽一条。</span>`:'');
+    $('#fapply').disabled = n<8;
+    return;
+  }
+  const r=passRate(S.Fdraft), per100=Math.round(r*100), tight=r<0.10;
+  $('#fcount').className='fcount'+(tight?' thin':'');
+  $('#fcount').innerHTML = r>=0.999
+    ? `未设条件`
+    : `<b>${per100>=1?per100:'<1'}%</b> 能过${tight?
+        `<br><span style="color:var(--pass)">百里挑 ${per100>=1?per100:'一不到'}，确认每条都是必须。</span>`:''}`;
+  $('#fapply').disabled = r<=0;
+}
+$('#fbody').addEventListener('click',e=>{
+  const b=e.target.closest('.fchip'); if(!b) return;
+  if(b.dataset.lg){
+    const grp=b.dataset.lg, v=b.dataset.v;
+    S.Fdraft.lang = S.Fdraft.lang.filter(x=> grp==='en' ? !x.startsWith('en') : x!==grp);
+    if(v) S.Fdraft.lang.push(v);
+    b.closest('.lgrow').querySelectorAll('.fchip').forEach(c=>c.setAttribute('aria-pressed',c===b));
+    b.closest('.fsec').querySelector('.fsub').textContent=S.Fdraft.lang.length?'已设':'不限';
+    updateCount(); return;
+  }
+  const k=b.dataset.f, v=fdefOf(k,FDEF[k]).opts.find(o=>String(o[0])===b.dataset.v)[0];
+  const arr=S.Fdraft[k], i=arr.findIndex(x=>String(x)===String(v));
+  i>=0 ? arr.splice(i,1) : arr.push(v);
+  b.setAttribute('aria-pressed', i<0);
+  b.closest('.fsec').querySelector('.fsub').textContent =
+    (k==='code'&&arr.length>1) ? '须同时掌握' : arr.length?'已设':(FDEF[k].hint||'不限');
+  updateCount();
+});
+$('#fbody').addEventListener('input',e=>{
+  if(e.target.type!=='range') return;
+  const r=e.target.closest('.rng'), k=r.dataset.f, d=FDEF[k];
+  const [lo,hi]=[...r.querySelectorAll('input')];
+  S.Fdraft[k]=[Math.min(+lo.value,+hi.value), Math.max(+lo.value,+hi.value)];
+  const sec=r.closest('.fsec'), vals=sec.querySelectorAll('.rngval div');
+  vals[0].innerHTML=`${S.Fdraft[k][0]}<span> ${d.unit}</span>`;
+  vals[1].innerHTML=`${S.Fdraft[k][1]}${S.Fdraft[k][1]>=d.max?'+':''}<span> ${d.unit}</span>`;
+  sec.querySelector('.fsub').textContent=(S.Fdraft[k][0]>d.min||S.Fdraft[k][1]<d.max)?'已设':'不限';
+  paintRange(r); updateCount();
+});
+/* ---- 记忆按 (岗位, 赛道) 自动落盘；通用的跨岗位共享 ---- */
+const MEMK='persona_mem_v1', jobKey=()=>`${S.role}|${S.sub||''}|${S.tk}`;
+const loadMemAll=()=>{ try{return JSON.parse(localStorage.getItem(MEMK))||{byJob:{},general:[]}}catch(_){return {byJob:{},general:[]}} };
+function saveMemNow(){ try{
+  const m=loadMemAll();
+  const merge=(cur,old)=>{ const out=cur.map(x=>({...x}));
+    for(const o of old||[]) if(!out.some(x=>x.text===o.text)) out.push(o);
+    return out; };
+  m.byJob[jobKey()]=merge((S.notes||[]).filter(x=>!x.gen), m.byJob[jobKey()]);
+  m.general=merge((S.notes||[]).filter(x=>x.gen), m.general);
+  localStorage.setItem(MEMK,JSON.stringify(m));
+}catch(_){} }
+function histDel(text){ try{
+  const m=loadMemAll();
+  m.byJob[jobKey()]=(m.byJob[jobKey()]||[]).filter(x=>x.text!==text);
+  m.general=(m.general||[]).filter(x=>x.text!==text);
+  localStorage.setItem(MEMK,JSON.stringify(m));
+}catch(_){} }
+function loadMemJob(){
+  const m=loadMemAll(), seen=new Set(), out=[];
+  for(const x of [...m.general.map(g=>({...g,gen:true})), ...(m.byJob[jobKey()]||[])])
+    if(x.text&&!seen.has(x.text)){ seen.add(x.text); out.push(x); }
+  return out;
+}
+/* ---- 记忆：一条一条管。自动判词只是猜，指向哪个维度可以自己改 ---- */
+const DIMOPTS=(()=>{const o=[['','（不指向具体维度）']];
+  for(const d in DIMS) for(const lv in DIMS[d].L) o.push([d+'|'+lv, DIMS[d].label+'：'+DIMS[d].L[lv]]);
+  return o;})();
+function renderMem(){
+  const N=S.notes||[];
+  $('#memlist').innerHTML = N.map((n,i)=>`<div class="memrow" data-i="${i}" draggable="true"><span class="memgrip" title="拖动排优先级">⠿</span>
+    <button class="memsign" data-s="${n.sign<0?-1:1}" title="点击切换 要 / 不要">${n.sign<0?'−':'＋'}</button>
+    <button class="chip memgen" data-i="${i}" aria-pressed="${!!n.gen}" style="font-size:11px;padding:3px 8px">通用</button>
+    <input class="memtext" value="${(n.text||'').replace(/"/g,'&quot;')}">
+    <button class="memdel" title="删掉">×</button>
+    ${n.soft?`<span class="memdim" style="border:0;color:var(--ink3)">排序偏好</span>`:`<select class="memdim">`}${DIMOPTS.map(([v,l])=>
+      `<option value="${v}"${v===(n.dim?n.dim+'|'+n.lv:'')?' selected':''}>${l}</option>`).join('')}${n.soft?'':'</select>'}</div>`).join('')
+    || '';
+  const hist=loadMemJob().filter(h=>!N.some(n=>n.text===h.text));
+  $('#memhist').innerHTML = hist.length
+    ? `<div class="fnote" style="margin-top:8px">历史偏好</div>`+hist.map(h=>
+        `<div class="memrow" style="grid-template-columns:26px 1fr auto;color:var(--ink3)">
+          <button class="memsign" data-hen="${h.text.replace(/"/g,'&quot;')}" title="启用" style="background:var(--panel);border-color:var(--line);color:var(--ink3)">＋</button>
+          <span style="font-size:13px">${h.text}</span>
+          <button class="memdel" data-hdel="${h.text.replace(/"/g,'&quot;')}" title="从历史删除">×</button>
+        </div>`).join('')
+    : '';
+  const used=new Set(N.map(n=>n.text));
+  $('#memseed').innerHTML = `推荐：<br>` +
+    memSeeds().filter(t=>!used.has(t)).map(t=>`<button class="seedchip" data-seed="${t.replace(/"/g,'&quot;')}">＋ ${t}</button>`).join('')
+    || '推荐的都加过了。';
+}
+let memDrag=null;
+$('#memlist').addEventListener('dragstart',e=>{ const r=e.target.closest('.memrow'); if(r) memDrag=+r.dataset.i; });
+$('#memlist').addEventListener('dragover',e=>{ const r=e.target.closest('.memrow'); if(!r) return; e.preventDefault(); r.classList.add('dragover'); });
+$('#memlist').addEventListener('dragleave',e=>{ e.target.closest('.memrow')?.classList.remove('dragover'); });
+$('#memlist').addEventListener('drop',e=>{
+  const r=e.target.closest('.memrow'); if(!r||memDrag==null) return;
+  e.preventDefault(); r.classList.remove('dragover');
+  const to=+r.dataset.i; if(to===memDrag) return;
+  S.notes.splice(to,0,S.notes.splice(memDrag,1)[0]);
+  memDrag=null; refit(); saveMemNow(); renderMem(); renderNotes();
+});
+$('#memsec').addEventListener('click',e=>{
+  const hen=e.target.closest('[data-hen]');
+  if(hen){
+    const h=loadMemJob().find(x=>x.text===hen.dataset.hen);
+    if(h){ S.notes.push({...h}); refit(); saveMemNow(); reflowPool(); renderMem(); renderNotes(); }
+    return;
+  }
+  const hdel=e.target.closest('[data-hdel]');
+  if(hdel){ histDel(hdel.dataset.hdel); renderMem(); return; }
+  const row=e.target.closest('.memrow'), i=row?+row.dataset.i:-1;
+  if(e.target.closest('.memsign')){
+    const n=S.notes[i]; n.sign = n.sign>0? -1 : 1;
+    refit(); saveMemNow(); renderMem(); renderNotes(); return;
+  }
+  if(e.target.closest('.memgen')){
+    const n=S.notes[i]; n.gen=!n.gen;
+    saveMemNow(); renderMem(); return;
+  }
+  if(e.target.closest('.memdel')){ S.notes.splice(i,1); refit(); saveMemNow(); renderMem(); renderNotes(); return; }
+  const sd=e.target.closest('[data-seed]');
+  if(sd){
+    const t=sd.dataset.seed, tag=tagNote(t);
+    S.notes=S.notes||[]; S.notes.push({text:t, card:'', ...(tag||{sign:1})});
+    refit(); renderMem(); renderNotes();
+  }
+});
+$('#memsec').addEventListener('input',e=>{
+  const row=e.target.closest('.memrow'); if(!row) return;
+  const n=S.notes[+row.dataset.i];
+  if(e.target.classList.contains('memtext')) n.text=e.target.value;
+  if(e.target.classList.contains('memdim')){
+    const [d,lv]=e.target.value.split('|');
+    n.dim=d||undefined; n.lv=lv||undefined;
+    if(n.dim&&!n.sign) n.sign=1;
+    refit(); saveMemNow(); renderNotes();
+  }
+});
+function renderKws(){
+  $('#kwlist').innerHTML=(S.Fdraft.kws||[]).map((k,i)=>`<div class="memrow" data-ki="${i}" style="grid-template-columns:1fr auto">
+    <div style="font-size:13.5px"><b style="color:${k.neg?'var(--pass)':'var(--ink)'}">${k.neg?'排除':'必含'}</b>　${k.t}</div>
+    <button class="memdel" title="删掉">×</button></div>`).join('');
+}
+$('#kwinput').addEventListener('input',e=>{ $('#kwadd').disabled=!e.target.value.trim(); });
+$('#kwneg').onclick=e=>{
+  const on=e.target.getAttribute('aria-pressed')==='true';
+  e.target.setAttribute('aria-pressed',!on); e.target.textContent=on?'必含':'排除';
+};
+$('#kwadd').onclick=()=>{
+  const t=$('#kwinput').value.trim(); if(!t) return;
+  (S.Fdraft.kws=S.Fdraft.kws||[]).push({t, neg:$('#kwneg').getAttribute('aria-pressed')==='true'});
+  $('#kwinput').value=''; $('#kwadd').disabled=true;
+  renderKws(); updateCount();
+};
+$('#kwinput').addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.value.trim()) $('#kwadd').click(); });
+$('#kwlist').addEventListener('click',e=>{
+  const r=e.target.closest('.memrow'); if(!r||!e.target.closest('.memdel')) return;
+  S.Fdraft.kws.splice(+r.dataset.ki,1); renderKws(); updateCount();
+});
+$('#minput').addEventListener('input',e=>{ $('#madd').disabled=!e.target.value.trim(); });
+$('#minput').addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.value.trim()) $('#madd').click(); });
+$('#madd').onclick=()=>{
+  const t=$('#minput').value.trim(); if(!t) return;
+  const tag=tagNote(t);
+  S.notes=S.notes||[]; S.notes.push({text:t, card:'', ...(tag||{sign:1})});
+  $('#minput').value=''; $('#madd').disabled=true;
+  refit(); renderMem(); renderNotes();
+};
+function ensureDeckPreview(){
+  if(S.deck&&S.deck.length&&S.deckForJob===jobKey()+S.poolMode) return;
+  const raw=poolDocs();
+  S.deck=raw.map((d,i)=>({...cardFromCV(d.text,S.tk,i), src:d.src}));
+  S.realTotal=S.deck.length; S.deckForJob=jobKey()+S.poolMode;
+}
+$('#libnarrow').onclick=()=>{
+  ensureDeckPreview();
+  S.Fdraft=JSON.parse(JSON.stringify(S.F));
+  renderFilters(); renderMem(); renderKws();
+  $('#fsheet').classList.add('on');
+};
+$('#filterbtn').onclick=()=>{ S.Fdraft=JSON.parse(JSON.stringify(S.F)); renderFilters(); renderMem(); renderKws(); $('#fsheet').classList.add('on'); };
+$('#fclose').onclick=()=>$('#fsheet').classList.remove('on');
+$('#freset').onclick=()=>{ S.Fdraft=blankF(); renderFilters(); };
+$('#fsheet').addEventListener('pointerdown',e=>{ if(e.target.id==='fsheet') $('#fsheet').classList.remove('on'); });
+$('#fapply').onclick=()=>{
+  S.F=JSON.parse(JSON.stringify(S.Fdraft));
+  if($('#landing').classList.contains('on')){
+    ensureDeckPreview();
+    const n=S.deck.filter(c=>passes(c,S.F)).length;
+    tweenNum($('#libtotal'), n);
+    $('#libhint').textContent=' · 已收窄';
+    $('#fsheet').classList.remove('on');
+    return;
+  }
+  const seen=new Set(S.decisions.map(d=>d.card.name));
+  if(REAL()){
+    S.pool=S.deck.filter(c=>passes(c,S.F)&&!seen.has(c.name));   // 真人只能筛
+  } else {
+    S.deck=buildDeck(S.tk,S.F,S.role,S.year);                            // 合成卡按条件重建，正交性不变
+    S.pool=S.deck.filter(c=>!seen.has(c.name));
+  }
+  for(const x of S.stack) x.el.remove();
+  S.stack=[];
+  fill(); layout(false);
+  const n=activeCount(S.F);
+  $('#fsheet').classList.remove('on');
+};
+
+/* ==================================================================
+   8.8 筛简历 —— 画像是手段，这一步才是目的
+   ================================================================== */
+
+/* 从自由文本简历里抽出跟卡片同一套的维度。
+   demo 用规则；生产上这一步该换成 LLM 抽取（ConFit 那类工作的做法），
+   但下游打分逻辑一个字都不用改 —— 它只吃维度向量。 */
+/* 公司名 → 类型。从生成器用的同一份常量推导，比手写正则准 */
+const COMAP=(()=>{const m={}; for(const k of ['big','uni','start']) for(const n of CO[k]) m[n]=k; return m;})();
+const STARTUP=/天使轮|种子轮|Pre-?A|A\+? ?轮|创业|初创|从 ?0 ?搭团队/;
+
+function coOf(txt, jobTk){
+  const rivals=TRACKS[jobTk].rival;
+  const scan=ln=>{
+    for(const n of rivals) if(ln.includes(n)) return 'rival';   // 对家优先：信息量最高
+    for(const n in COMAP) if(ln.includes(n)) return COMAP[n];
+    if(STARTUP.test(ln)) return 'start';
+    return null;
+  };
+  for(const ln of txt.split(/\n/)) if(/实习|Intern/i.test(ln)){ const r=scan(ln); if(r) return r; }
+  return scan(txt) || 'uni';
+}
+/* 赛道：简历上没人写「我在做 AI 应用」，只能从做过的模块和看的指标反推 */
+function trackOf(txt){
+  let best=null, bs=0;
+  for(const k in TRACKS){
+    const T=TRACKS[k]; let sc=0;
+    for(const w of T.mod) if(txt.includes(w)) sc+=3;   // 做过的模块
+    for(const w of T.met) if(txt.includes(w)) sc+=2;   // 看的指标
+
+    if(sc>bs){bs=sc;best=k}
+  }
+  return bs>0?best:null;
+}
+const EX={
+  major:[['cs', /计算机|软件工程|人工智能|智能科学|数据科学|Computer Science|Software Engineering|\bCS\b/i],
+         ['eng',/自动化|电子信息|工业工程|生物医学|统计学|数学与应用|机械|物理/],
+         ['biz',/工商管理|市场营销|新闻|传播|社会学|心理学|经济|金融|设计|汉语|文学/]],
+  school:[['t1', /清华|北京大学|北大|上海交通|复旦|浙江大学|中国科学技术|南京大学/],
+          ['sea',/香港|新加坡|南洋理工|伦敦大学|卡内基|伊利诺伊|Nanyang|Carnegie|UIUC|CMU|NUS|NTU|海外|[A-Z][a-z]+ University|University of/],
+          ['t2', /中国人民大学|人大|武汉大学|华中科技|同济|北京航空|西安交通|哈尔滨工业|中山大学|厦门大学|东南大学|北京邮电|华东师范|985|211/],
+          ['t3', /大学|学院|College/i]],
+  // 「独立完成」在项目栏满天飞，不是 0→1 的证据；只认强信号
+  z01:[['yes',/从 ?0 ?[到\-–—~至] ?1|0 ?[→>] ?1|从零|冷启动|第一版|自己写 ?PRD|牵头|没有专职|白手|独立负责/i],
+       ['no', /日常迭代|维护|承接|配合运营|已有功能|成熟的|跟进 ?\d+ ?个版本/]],
+  // 「文档整理」不算产出
+  proof:[['quant',/\d+ ?%|提升到 ?\d{2,}|从 ?\d{2,}[^\n]{0,14}到 ?\d{2,}|增长了|翻[了倍]|GMV|ROI/],
+         ['work', /沉淀|竞品拆解|竞品分析|可交互原型|完整原型|访谈纪要|作品集|演示视频|Figma/i],
+         ['desc', /参与|协助|配合|跟进排期/]]
+};
+function extract(txt, jobTk){
+  // z01/proof 只看经历 bullet 行 —— 「专业排名前 18%」这类教育数据不参与，
+  // 否则整库都会被判成「有量化结果」，维度直接失效
+  const bulls=txt.split(/\n/).filter(l=>/^[·\-•*]/.test(l.trim())).join('\n')||txt;
+  const g=(dim,dflt)=>{
+    const dom=(dim==='z01'||dim==='proof')?bulls:txt;
+    for(const [lv,re] of (EX[dim]||[])) if(re.test(dom)) return lv;
+    return dflt;
+  };
+  const tk=trackOf(txt);
+  const code=['Python','SQL','Java','Go','JS/TS','C++'].filter(c=>
+    new RegExp(c==='C++'?'C\\+\\+':c==='JS/TS'?'\\b(JS|TS)\\b|JavaScript|TypeScript|React|Vue':c,'i').test(txt));
+  const yrExp=txt.match(/(\d+)\s*年.{0,6}(经验|工作)/);
+  const mm=[...txt.matchAll(/(\d+)\s*个?月/g)].map(m=>+m[1]);
+  const ages=txt.match(/(\d{2})\s*岁/);
+  const ons=txt.match(/每周.{0,4}(\d)\s*天/);
+  return {
+    d:{ co:coOf(txt,jobTk), major:g('major','biz'), school:g('school','t3'),
+        z01:g('z01','no'), proof:g('proof','desc'),
+        track: tk===jobTk?'same' : tk===NEAR[jobTk]?'near' : 'cross' },
+    code,
+    en: /英语.{0,4}(可工作|工作|流利|母语)|雅思 ?[7-9]|托福 ?(9\d|10\d)/i.test(txt) ? '工作'
+      : /英语|CET|四级|六级|日常沟通/i.test(txt) ? '日常' : '弱',
+    jp: /N1|N2|日语/.test(txt) ? (/N1/.test(txt)?'N1':'N2') : null,
+    fr: /法语|DELF|DALF|TCF/i.test(txt) ? '熟练' : null,
+    months: (SOC()&&yrExp) ? +yrExp[1] : (mm.length? mm.reduce((a,b)=>a+b,0) : 6),
+    onsite: ons? +ons[1] : 5,
+    age: ages? +ages[1] : 23,
+    name: ((txt.trim().split(/\n/)[0]||'未署名').split(/[\s\u3000|｜,，]+/)[0]).replace(/[：:].*/,'').slice(0,16) || '未署名'
+  };
+}
+function scoreCV(c){
+  if(!FIT) return {p:0.5, terms:[]};
+  let z=FIT.b0; const terms=[];
+  for(const dim in DIMS){
+    const k=FIDX[dim+'|'+c.d[dim]];
+    const b=k===undefined?0:FIT.b[k];
+    terms.push({dim, label:DIMS[dim].L[c.d[dim]], b, dl:DIMS[dim].label});
+    z+=b;
+  }
+  // 参照档系数恒为 0，直接比会失真 —— 减去该维度的均值才是真实贡献
+  for(const t of terms){
+    const all=Object.keys(DIMS[t.dim].L).map(lv=>{const k=FIDX[t.dim+'|'+lv]; return k===undefined?0:FIT.b[k];});
+    t.rel = t.b - all.reduce((a,b)=>a+b,0)/all.length;
+  }
+  return {p:Math.min(.99, 1/(1+Math.exp(-z)) + softBonus(c)), terms:terms.sort((a,b)=>Math.abs(b.rel)-Math.abs(a.rel))};
+}
+function hardFail(c,F){
+  const bad=[], D=FDEF;
+  if(c.age<F.age[0]||c.age>F.age[1]) bad.push(`年龄 ${c.age}`);
+  if(c.months<F.months[0]||c.months>F.months[1]) bad.push(`实习 ${c.months} 个月`);
+  if(F.school.length&&!F.school.includes(c.d.school)) bad.push('院校');
+  if(F.onsite.length&&!F.onsite.includes(c.onsite)) bad.push(`每周到岗 ${c.onsite} 天`);
+  const mx=memExcluded(c);
+  if(mx) bad.push(`记过不要：${DIMS[mx.dim].L[mx.lv]}`);
+  for(const k of (F.kws||[])){
+    const hit=cardText(c).includes(k.t.toLowerCase());
+    if(k.neg&&hit) bad.push(`含「${k.t}」`);
+    if(!k.neg&&!hit) bad.push(`缺「${k.t}」`);
+  }
+  if(F.gpaMin>0){ const g=parseFloat(c.gpa); if(g>0&&g<F.gpaMin) bad.push(`GPA ${c.gpa}`); }
+  const pool_=c.code.concat(c.skill||[]);
+  const miss=F.code.filter(x=>!pool_.some(y=>String(y).includes(x)));
+  if(miss.length) bad.push('不会 '+miss.join('/'));
+  if(F.lang.length&&!F.lang.some(x=> x==='en_work'?c.en==='工作' : x==='en_daily'?(c.en!=='弱') : x==='fr'?!!c.fr : !!c.jp)) bad.push('语言');
+  return bad;
+}
+function runCV(){
+  const raw=$('#cvtext').value.split(/\n\s*---+\s*\n|\n\s*\n\s*\n/).map(x=>x.trim()).filter(x=>x.length>20);
+  if(!raw.length){ $('#cvout').innerHTML='<div class="rcard"><div class="ev">粘简历，或点「载入示例」。</div></div>'; return; }
+  const starSet=new Set(S.decisions.filter(d=>d.v==='star').map(d=>d.card.name));
+  const rows=raw.map(t=>{ const c=extract(t,S.tk); const sc=scoreCV(c); return {...c, ...sc, bad:hardFail(c,S.F), raw:t}; });
+  const live=rows.filter(r=>!r.bad.length).sort((a,b)=>b.p-a.p);
+  const dead=rows.filter(r=>r.bad.length).sort((a,b)=>b.p-a.p);
+  // 被硬性条件锁死的维度，过关的人人都满足，拿它当加分项是废话
+  const pinned=new Set([...(S.F.school.length?['school']:[]), ...(S.F.code.length||S.F.lang.length?['major']:[])]);
+  const N=Math.max(1,Math.min(live.length,Math.round(live.length*0.3)));
+  // 最该看见的一句话：你的硬性条件正在卡掉分数最高的人
+  const buried=dead.length&&live.length&&dead[0].p>live[0].p ? dead[0] : null;
+  const item=(r,i,off)=>`<div class="cvrow ${r.bad.length?'dead':''}">
+    <div class="rank">${r.bad.length?'—':i+1+off}</div>
+    <div class="cvbody">
+      <div class="cvname">${starSet.has(r.name)?'✦ ':''}${r.name}</div>
+      <div class="cvsig">
+        ${r.bad.length?`<span class="sig n">不满足硬性条件：${r.bad.join('、')}</span>`
+          :r.terms.filter(t=>!pinned.has(t.dim)).slice(0,3).map(t=>`<span class="sig ${t.rel>.25?'p':t.rel<-.25?'n':'x'}">${t.rel>.25?'＋':t.rel<-.25?'−':'·'} ${t.label}</span>`).join('')}
+      </div>
+    </div>
+    <div class="score"><b>${Math.round(r.p*100)}</b>
+      <div class="sb"><i style="width:${Math.round(r.p*100)}%;background:${r.p>=.65?'var(--pick)':r.p>=.4?'var(--ink)':'var(--pass)'}"></i></div>
+    </div></div>`;
+  $('#cvout').innerHTML=`
+    ${buried?`<div class="rcard warn" style="margin-top:20px">
+      <div class="rh" style="color:var(--pass)">⚠︎ 硬性条件正在卡掉最好的人</div>
+      <div class="ev" style="font-size:13.5px;color:var(--ink2)">
+        <b>${buried.name}</b> 按你滑出来的标准拿 <b>${Math.round(buried.p*100)} 分</b>，比你要面的第一名（${live[0].name}，${Math.round(live[0].p*100)} 分）还高，
+        但被「${buried.bad.join('、')}」卡掉了。<br><br><button class="tbtn" id="cvrelax">去放宽条件</button>
+      </div></div>`:''}
+    ${dead.length>rows.length*0.6?`<div class="rcard warn" style="margin-top:${buried?'12':'20'}px">
+      <div class="rh" style="color:var(--pass)">⚠︎ ${dead.length}/${rows.length} 被卡在门外</div>
+      <div class="ev" style="font-size:13.5px;color:var(--ink2)">筛掉六成以上 —— 画像再准，池子里也没人了。</div></div>`:''}
+    <div class="rcard" style="margin-top:${buried||dead.length>rows.length*0.6?'12':'20'}px">
+      <div class="rh">先面这 ${N} 个</div>
+      ${live.slice(0,N).map((r,i)=>item(r,i,0)).join('')}
+      ${live.length>N?`<div class="cut">其余 ${live.length-N} 份</div>${live.slice(N).map((r,i)=>item(r,i,N)).join('')}`:''}
+      ${dead.length?`<div class="cut">被硬性条件卡掉 ${dead.length} 份</div>${dead.map((r,i)=>item(r,i,0)).join('')}`:''}
+    </div>
+    <div class="ev" style="margin-top:14px;max-width:60ch">
+      分数来自滑卡学到的权重。
+      抽取为规则匹配，可换 LLM。
+    </div>`;
+}
+function cvText(c){
+  const L=[`${c.name}　${c.age}岁　求职意向：${c.intent}`,``,`【教育背景】`,
+    SOC()?`${c.school}　${c.major}　本科`:`${c.school}　${c.major}　本科　${c.grad}　GPA ${c.gpa}/4.0　专业排名前 ${c.rank}%`];
+  if(c.style==='rich'&&!SOC()) L.push(`主修：${c.courses.join('、')}`);
+  L.push(``,SOC()?`【工作经历】`:`【实习经历】`,`${c.exp1.co}　${c.exp1.role}　${c.exp1.dur}`,...c.exp1.lines.map(x=>'· '+x));
+  if(c.exp2) L.push(`${c.exp2.co}　${c.exp2.role}　${c.exp2.dur}`,...c.exp2.lines.map(x=>'· '+x));
+  if(c.style!=='terse') L.push(``,`【项目经历】`,`${c.proj.title}　${c.proj.line}`);
+  L.push(``,`【技能与证书】`,
+    `${c.code.length?'编程：'+c.code.join('、')+'　':''}英语${c.en==='工作'?'可工作':c.en==='日常'?'可日常沟通':'一般'}${c.jp?'、日语'+c.jp:''}${c.fr?'、法语熟练':''}${c.certs.length&&c.style!=='terse'?'　'+c.certs.join('、'):''}`,
+    `工具：${c.skill.slice(0,c.style==='terse'?3:6).join('、')}`);
+  if(S.year==='实习') L.push(`每周可到岗 ${c.onsite} 天`);
+  if(c.style!=='terse') L.push(``,`【自我评价】`,`${c.self}`);
+  return L.join('\n');
+}
+/* 一份真实简历 → 一张可以滑的卡。形状和合成卡完全一致，下游一个字不用改 */
+function cardFromCV(txt, jobTk, id){
+  const e=extract(txt, jobTk);
+  const lines=txt.split(/\n/).map(x=>x.trim()).filter(Boolean);
+  const eduI=lines.findIndex(l=>/大学|学院|University|College/i.test(l));
+  const edu=eduI>=0?lines[eduI]:'';
+  const expI=lines.findIndex(l=>/实习|Intern/i.test(l)&&!/求职意向/.test(l)&&!/^[【\[]/.test(l)&&!/^[·\-•*]/.test(l));
+  const bl=lines.filter(l=>/^[·\-•*]/.test(l)).map(l=>l.replace(/^[·\-•*]\s*/,''));
+  // 专业：学校名之后取第一个像专业的词；同行没有就看教育背景的下一行。
+  // 不再要求「以学/工程结尾 + 两侧空白 + 纯中文」—— 人工智能 / 行尾专业 / 分行排版 / 英文专业都收得进来
+  const majorTxt=(()=>{
+    const DEG=/^(本科|硕士|研究生|博士|学士|在读|大[一二三四]|GPA|绩点|排名|专业排名|20\d{2}|届|至今|预计|毕业|学历)/;
+    const scan=s=>{
+      if(!s) return '';
+      for(const t of s.split(/[\s\u3000·|｜,，;；\/、\-—–()（）]+/)){
+        const w=t.trim();
+        if(!w||DEG.test(w)) continue;
+        if(/大学|学院|University|College|中学|校区|分校/i.test(w)) continue;
+        if(/^[\u4e00-\u9fa5]{2,16}$/.test(w)) return w;
+      }
+      const en=s.match(/[A-Z][A-Za-z]+(?: (?:of |and |& )?[A-Za-z]+){0,4}/);
+      return en && !/University|College|School/i.test(en[0]) ? en[0] : '';
+    };
+    const after=edu.replace(/^.*?(大学|学院|University|College)/i,'');
+    const next=lines[eduI+1]||'';
+    return scan(after) || (!/实习|经历|工作|项目|【/.test(next) ? scan(next) : '') || '';
+  })().slice(0,20);
+  const tags=[...e.code];
+  if(e.en==='工作') tags.push('英语可工作'); if(e.jp) tags.push('日语'+e.jp);
+  if(e.d.z01==='yes') tags.push('0→1');
+  if(e.d.proof==='quant') tags.push('有量化结果'); else if(e.d.proof==='work') tags.push('有作品');
+  return {
+    id, real:true, raw:txt, d:e.d, code:e.code, en:e.en, jp:e.jp, fr:e.fr,
+    months:e.months, onsite:e.onsite, age:e.age, name:e.name,
+    school:((edu.match(/^(.*?(?:大学|学院|University|College))/i)||[])[1]||edu.split(/[\s\u3000]+/)[0]||'—').trim(), major:majorTxt||'', 
+    grad:(txt.match(/20\d{2}\.\d{2}\s*毕业/)||[`${e.age} 岁`])[0],
+    gpa:(edu.match(/GPA\s*([\d.]+)/)||[])[1]||'—', rank:(edu.match(/前\s*(\d+)%/)||[])[1]||'—',
+    av:id%8, ini:(e.name||'?').slice(0,1), tk:trackOf(txt)||jobTk,
+    exp1:{co:(expI>=0?lines[expI]:'—').replace(/[\s\u3000]{2,}/g,'　').trim().slice(0,42).replace(/[·・\s\u3000]+$/,''),
+          role:'', dur:`共 ${e.months} 个月`,
+          lines:[bl[0]||'（简历里没写具体做了什么）', bl[1]||'', bl[2]||'']},
+    exp2:null, skill:tags.length?tags:['—'], style:'real'
+  };
+}
+function demoCVs(n){
+  const deck=buildDeck(S.tk,null,S.role,S.year), pick=[];
+  for(let i=0;i<(n||20);i++) pick.push(deck[(i*37+11)%deck.length]);
+  return pick.map(cvText).join('\n\n---\n\n');
+}
+$('#cvrun').onclick=()=>{ runCV(); const b=$('#cvrelax'); if(b) b.onclick=()=>{ show('deck'); $('#filterbtn').click(); }; };
+$('#cvdemo').onclick=()=>{ $('#cvtext').value=demoCVs(20); $('#cvrun').click(); };
+$('#cvclear').onclick=()=>{ $('#cvtext').value=''; $('#cvout').innerHTML=''; };
+$('#cvback').onclick=()=>{ show('result'); window.scrollTo(0,0); };
+function openCV(){
+  const A=analyze(false), top=Object.values(A.out).sort((a,b)=>b.power-a.power)[0];
+  $('#cvmodel').innerHTML=`<span class="dot"></span>用你滑的 ${S.decisions.length} 张训练的模型${top&&top.power>=2.2?` · 最看重「${top.label}」`:''}`;
+  show('screen-cv'); window.scrollTo(0,0);
+  if(REAL() && !$('#cvtext').value.trim()){
+    $('#cvtext').value=poolDocs().map(d=>d.text).join('\n\n---\n\n');
+    $('#cvrun').click();
+  }
+}
+
+/* ==================================================================
+   8.9 存起来 —— 这些是隐性要求，下次不该从零问一遍
+   ================================================================== */
+const LS='persona_v1';
+const loadAll=()=>{ try{return JSON.parse(localStorage.getItem(LS))||[]}catch(_){return []} };
+const saveAll=a=>{ try{localStorage.setItem(LS,JSON.stringify(a.slice(-24)))}catch(_){} };
+
+function autoSavePreset(){
+  try{
+    const all=loadAll().filter(x=>!(x.scope==='job'&&x.key===jobKey()));   // 同岗覆盖
+    all.push({ id:Date.now(), scope:'job', key:jobKey(),
+      name:`${S.role}${S.subKnown?' · '+S.sub:''} · ${TRACKS[S.tk].name}`,
+      role:S.role, year:S.year, tk:S.tk,
+      F:JSON.parse(JSON.stringify(S.F)), notes:(S.notes||[]).map(n=>({...n})),
+      fit:FIT?{b:[...FIT.b],b0:FIT.b0}:null, n:S.decisions.length,
+      roster:S.decisions.filter(d=>d.v!=='no').map(d=>({n:d.card.name, sc:d.card.school, co:d.card.exp1.co, v:d.v})) });
+    saveAll(all); renderPresets();
+  }catch(_){}
+}
+function savePreset(){
+  const g=confirm('存为通用偏好？\n确定 = 跨岗位生效\n取消 = 仅本岗位');
+  const name=prompt(g?'通用偏好叫什么名字？':'存成什么名字？（岗位名 / 项目名）',
+                    g?`我的通用标准 · ${new Date().toISOString().slice(0,10)}`:`${S.role} · ${TRACKS[S.tk].name}`);
+  if(!name) return false;
+  const all=loadAll();
+  all.push({ id:Date.now(), scope:g?'general':'job', name:name.slice(0,40), role:S.role, year:S.year, tk:S.tk,
+             F:JSON.parse(JSON.stringify(S.F)), notes:(S.notes||[]).map(n=>({...n})),
+             fit:FIT?{b:[...FIT.b],b0:FIT.b0}:null, n:S.decisions.length });
+  saveAll(all); renderPresets();
+  return true;
+}
+/* 多选合并：区间取交集（都要满足），多选项取并集（满足其一即可） */
+function mergePresets(list){
+  const F=blankF(), notes=[];
+  for(const ps of list){
+    F.age[0]=Math.max(F.age[0],ps.F.age[0]);  F.age[1]=Math.min(F.age[1],ps.F.age[1]);
+    F.months[0]=Math.max(F.months[0],ps.F.months[0]); F.months[1]=Math.min(F.months[1],ps.F.months[1]);
+    for(const k of ['school','lang','code','onsite'])
+      for(const v of ps.F[k]||[]) if(!F[k].map(String).includes(String(v))) F[k].push(v);
+    for(const kw of ps.F.kws||[])
+      if(!F.kws.some(x=>x.t===kw.t&&x.neg===kw.neg)) F.kws.push({...kw});
+    for(const n of ps.notes||[]) notes.push(n);
+  }
+  if(F.age[0]>F.age[1]) F.age=[Math.min(F.age[0],F.age[1]),Math.max(F.age[0],F.age[1])];
+  if(F.months[0]>F.months[1]) F.months=[Math.min(F.months[0],F.months[1]),Math.max(F.months[0],F.months[1])];
+  return {F,notes};
+}
+function renderPresets(){
+  const all=loadAll();
+  $('#presetwrap').style.display = all.length?'block':'none';
+  const one=ps=>{
+    const r=ps.roster||[], st=r.filter(x=>x.v==='star').length;
+    const meta=r.length?` · ✦${st} · ${r.length} 人`:'';
+    return `<button class="chip" data-ps="${ps.id}" aria-pressed="${ps.scope==='general'}">${
+    ps.scope==='general'?'<span style="opacity:.5">通用 · </span>':''}${ps.name}
+    <span style="opacity:.5;font-size:12px">${meta}</span></button>${
+    ps.roster&&ps.roster.length?`<button class="linkish" data-pinfo="${ps.id}" style="margin:0;font-size:12px">看名单</button>`:''}`;};
+  const gen=all.filter(p=>p.scope==='general'), job=all.filter(p=>p.scope!=='general');
+  $('#presets').innerHTML =
+    (gen.length?gen.slice().reverse().map(one).join(''):'')
+    + (job.length?job.slice().reverse().map(one).join(''):'')
+    ;
+  const fl=$('#presetwrap').querySelector('.flabel');
+  fl.style.display='flex'; fl.style.alignItems='baseline';
+  fl.innerHTML = `筛选历史${
+      all.length?`<button class="linkish" id="pswipe" style="display:inline;margin:0 0 0 auto;font-size:12px;color:var(--ink4);white-space:nowrap">清除全部历史</button>`:''}`;
+  const pw=$('#pswipe'); if(pw) pw.onclick=()=>{ if(confirm('清除所有筛选历史？')){ saveAll([]); renderPresets(); } };
+}
+/* 简历库是已接入的数据库 —— 内容按当前岗位从库里取，带来源标签 */
+const SRCMAP={
+  '实习':[['site','官网投递'],['ref','内推'],['sszn','实习僧'],['boss','BOSS 直聘']],
+  '校招':[['site','官网投递'],['ref','内推'],['campus','校园宣讲'],['nk','牛客']],
+  '社招':[['site','官网投递'],['ref','内推'],['boss','BOSS 直聘'],['lp','猎聘'],['hh','猎头推荐']]
+};
+const SRCS=()=>SRCMAP[S.year]||SRCMAP['实习'];
+/* 池子从哪来 —— 前置选择的选择 */
+const POOLMODES=[
+  ['applied','本岗位已投递', 120, ''],
+  ['history','过往相似岗位投递', 200, ' · 来自 4 个历史岗位'],
+  ['anchor','对标已入职实习生', 48, ' · 按这个岗位之前 2 位实习生的画像匹配']
+];
+S.poolMode='applied';
+S.srcSel=new Set(SRCS().map(x=>x[0]));
+const srcOf=i=>{
+  const L=SRCS(), w=[4,3,2,1,1].slice(0,L.length);       // 官网/内推占大头
+  const tot=w.reduce((a,b)=>a+b,0); let k=i%tot;
+  for(let j=0;j<L.length;j++){ k-=w[j]; if(k<0) return L[j][0]; }
+  return L[0][0];
+};
+const titleRoleOf=t=> /产品经理|产品实习生|产品负责人|数据分析师|产品运营/.test(t)?'产品'
+  : /设计师/.test(t)?'设计' : /运营/.test(t)?'运营' : '研发';
+function poolBase(title,role,stage){
+  const seed=[...title].reduce((a,c)=>a+c.charCodeAt(0),0);
+  const bases={'产品':[268,296],'研发':[126,168],'运营':[202,238],'设计':[92,118],'市场':[150,170],'职能':[110,120]};
+  const [i,c]=bases[role]||[140,160];
+  return (stage==='实习'?i:c)+seed%37;
+}
+function jobBaseN(){
+  const j=S.pickedJobs&&S.pickedJobs[0];
+  if(j) return poolBase(j.t, titleRoleOf(j.t), /实习/.test(j.t)?'实习':'校招');
+  return poolBase(jobKey(), S.role, S.year);
+}
+const rowN=j=>poolBase(j.t, titleRoleOf(j.t), /实习/.test(j.t)?'实习':'校招');
+function modeN(k){
+  const b=jobBaseN(), seed=[...jobKey()].reduce((a,c)=>a+c.charCodeAt(0),0);
+  return k==='history' ? Math.round(b*1.7) : k==='anchor' ? 42+seed%19 : b;
+}
+const poolN=()=>Math.min(432, modeN(S.poolMode) + 80*Math.max(0,(S.pickedJobs?.length||1)-1));
+function libraryDocs(){
+  const N=poolN();
+  const deck=buildDeck(S.tk,null,S.role,S.year), out=[];
+  for(let i=0;i<N;i++){
+    const c=deck[(i*37+11)%deck.length];
+    out.push({src:srcOf(i), text:cvText(c)});
+  }
+  return out;
+}
+function poolDocs(){
+  const all=libraryDocs();
+  return S.poolMode==='applied' ? all.filter(d=>S.srcSel.has(d.src)) : all;
+}
+function tweenNum(el,to){
+  const gen=(+el.dataset.tw||0)+1; el.dataset.tw=gen;      // 新动画作废旧动画，防两个循环抢写
+  const from=+(el.dataset.v||String(el.textContent).replace(/,/g,''))||0;
+  el.dataset.v=to; const t0=performance.now();
+  const step=t=>{ if(+el.dataset.tw!==gen) return;
+    const k=Math.min(1,(t-t0)/550);
+    el.textContent=Math.round(from+(to-from)*(1-Math.pow(1-k,3))).toLocaleString();
+    if(k<1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+function srcCounts(total){
+  const L=SRCS(), w=[4,3,2,1,1].slice(0,L.length), tot=w.reduce((a,b)=>a+b,0);
+  const o={}; L.forEach(([k],i)=>o[k]=Math.round(total*w[i]/tot)); return o;
+}
+function renderMode(){
+  $('#start').disabled=!S.jobLocked;
+  $('#f-mode').innerHTML=POOLMODES.map(([k,l])=>
+    `<button class="chip" data-mode="${k}" aria-pressed="${S.poolMode===k}">${l}</button>`).join('');
+  const m=POOLMODES.find(x=>x[0]===S.poolMode);
+  if(!S.jobLocked){
+    $('#libnum').style.display='none';
+    $('#libnarrow').style.display='none';
+    $('#libhint').textContent='定位岗位后载入匹配简历';
+    $('#f-src').style.display='none';
+    return;
+  }
+  $('#libnum').style.display='';
+  $('#libnarrow').style.display='';
+  $('#libhint').textContent=m[3]||' · 匹配本岗位';
+  $('#f-src').style.display = S.poolMode==='applied' ? '' : 'none';
+  if(S.poolMode!=='applied') tweenNum($('#libtotal'), poolN());
+}
+$('#f-mode').addEventListener('click',e=>{
+  const b=e.target.closest('.chip'); if(!b) return;
+  S.poolMode=b.dataset.mode; renderMode(); if(S.poolMode==='applied') renderSrc();
+});
+function renderSrc(){
+  if(!S.jobLocked){ renderMode(); return; }
+  if(![...S.srcSel].every(k=>SRCS().some(x=>x[0]===k))) S.srcSel=new Set(SRCS().map(x=>x[0]));
+  const counts={}; const NN=poolN(); for(let i=0;i<NN;i++) counts[srcOf(i)]=(counts[srcOf(i)]||0)+1;
+  $('#f-src').innerHTML=SRCS().map(([k,l])=>
+    `<button class="chip" data-src="${k}" aria-pressed="${S.srcSel.has(k)}">${l} ${counts[k]||0}</button>`).join('');
+  tweenNum($('#libtotal'), [...S.srcSel].reduce((a,k)=>a+(counts[k]||0),0));
+}
+$('#f-src').addEventListener('click',e=>{
+  const b=e.target.closest('.chip'); if(!b) return;
+  const k=b.dataset.src;
+  if(S.srcSel.has(k)){ if(S.srcSel.size>1) S.srcSel.delete(k); } else S.srcSel.add(k);
+  renderSrc();
+});
+renderMode(); renderSrc();
+$('#presets').addEventListener('click',e=>{
+  const pi=e.target.closest('[data-pinfo]');
+  if(pi){
+    const ps=loadAll().find(x=>String(x.id)===pi.dataset.pinfo);
+    if(ps&&ps.roster){
+      $('#js-title').textContent=ps.name+' · 当时的名单';
+      $('#jsbody').contentEditable='false';
+      $('#js-tip').style.display='none';
+      $('#jsbody').textContent=ps.roster.map(r=>`${r.v==='star'?'✦':'✓'} ${r.n} · ${r.sc} · ${r.co}`).join('\n');
+      const st=ps.roster.filter(r=>r.v==='star');
+      $('#js-import').style.display=st.length?'block':'none';
+      $('#js-import').onclick=()=>{
+        S.importedStars=S.importedStars||[];
+        let add=0;
+        for(const r of st) if(!S.importedStars.some(x=>x.n===r.n)){ S.importedStars.push(r); add++; }
+        tick&&tick();
+        $('#js-import').textContent=add?`已导入 ${add} 人`:'都已在清单里';
+        setTimeout(()=>{ $('#js-import').textContent='导入待约'; $('#jsheet').classList.remove('on'); },900);
+      };
+      $('#jsheet').classList.add('on');
+    }
+    return;
+  }
+  const b=e.target.closest('.chip'); if(!b) return;
+  b.setAttribute('aria-pressed', b.getAttribute('aria-pressed')!=='true');
+});
+const chosenPresets=()=>{
+  const ids=[...$('#presets').querySelectorAll('[aria-pressed="true"]')].map(b=>+b.dataset.ps);
+  return loadAll().filter(p=>ids.includes(p.id));
+};
+renderPresets();
+
+/* ==================================================================
+   9. 页面装配
+   ================================================================== */
+function show(id){ $$('.screen').forEach(s=>s.classList.remove('on')); $('#'+id).classList.add('on'); }
+const OPT={
+  role:['产品','研发','设计','运营','市场','职能'],
+  year:['实习','校招','社招'],
+  track:Object.keys(TRACKS)
+};
+const SOC=()=>S.year==='社招';
+/* 职能的常见二级方向 */
+const SUBROLE={
+  '产品':['ToC','ToB','平台 / 中台'],
+  '研发':['后端','前端','客户端','测试开发','基础架构','数据研发','安全','算法 · 基模 / 后训练','算法 · 推荐 / 搜索'],
+  '设计':['UI / UX','视觉 / 品牌'],
+  '运营':['内容运营','用户运营','商家运营','产品运营'],
+  '市场':['品牌','公关','增长营销'],
+  '职能':['HR','财务','法务','行政']
+};
+function chips(host,list,cur,labelOf,onPick){
+  $(host).innerHTML=list.map(v=>`<button class="chip" data-v="${v}" aria-pressed="${v===cur}">${labelOf(v)}</button>`).join('');
+  $(host).onclick=e=>{const b=e.target.closest('.chip');if(!b)return;
+    [...$(host).children].forEach(c=>c.setAttribute('aria-pressed',c===b));onPick(b.dataset.v)};
+}
+function renderSub(){
+  const list=SUBROLE[S.role]||[];
+  if(!list.includes(S.sub)){ S.sub=list[0]; S.subKnown=false; }
+  chips('#f-sub',list,S.sub,v=>v,v=>togglePick('sub',v===S.sub&&S.subKnown,'#f-sub',()=>{S.sub=v; S.subKnown=true;}));
+}
+function flyOne(dir){
+  const f=$('#fan'); if(f.dataset.busy) return;
+  const cards=[...f.querySelectorAll('i')];
+  const left=cards.filter(c=>!c.classList.contains('gone-l')&&!c.classList.contains('gone-r'));
+  if(!left.length) return;
+  (dir==='l' ? left[0] : left[left.length-1])                        // ✕ 从最左飞起，✓ 从最右飞起
+    .classList.add(dir==='l'?'gone-l':'gone-r');
+  if(left.length===1){                        // 飞完最后一张，停一拍，各自从飞走的方向回来
+    f.dataset.busy='1';
+    setTimeout(()=>{
+      cards.forEach((c,i)=>{
+        const wasL=c.classList.contains('gone-l');
+        c.classList.remove('gone-l','gone-r');
+        c.style.animationDelay=(i*0.09)+'s';
+        c.classList.add(wasL?'back-l':'back-r');
+      });
+      setTimeout(()=>{
+        cards.forEach(c=>{ c.classList.remove('back-l','back-r'); c.style.animationDelay=''; });
+        delete f.dataset.busy;
+      }, cards.length*90+700);
+    }, 750);
+  }
+}
+$('#fanx').onclick=()=>flyOne('l');
+$('#fanv').onclick=()=>flyOne('r');
+function togglePick(key,same,rowSel,apply){
+  S.det=S.det||{}; S.ans=S.ans||{};
+  if(S.ans[key]&&same){                       // 再点已选项：取消
+    delete S.ans[key]; delete S.det[key];
+    $$(rowSel+' .chip').forEach(c=>c.setAttribute('aria-pressed','false'));
+    updateConf(S.det); return;
+  }
+  apply(); S.det[key]=1; S.ans[key]=1; updateConf(S.det);
+}
+chips('#f-role',OPT.role,S.role,v=>v,v=>togglePick('role',v===S.role,'#f-role',()=>{S.role=v; renderSub();}));
+S.sub=SUBROLE[S.role][0]; renderSub(); renderSum(null);
+chips('#f-year',OPT.year,S.year,v=>v,v=>togglePick('stage',v===S.year,'#f-year',()=>{S.year=v; renderSrc();}));
+chips('#f-track',OPT.track,S.tk,v=>TRACKS[v].name,v=>togglePick('tk',v===S.tk,'#f-track',()=>{S.tk=v;}));
+
+/* 真实示例 JD：抓自月之暗面招聘官网（MokaHR），2026-09 在招 */
+const JDS=[
+ ['字节 · Agent 评测产品实习',
+`豆包AI大模型Agent评测产品实习生 - 火山方舟 · 上海、北京 · ByteIntern（2027届，可转正）
+团队：火山方舟是一站式大模型服务平台，提供模型推理、评测、精调全流程服务。
+职责：1、协助负责 Agent 评测集的构建；2、协助进行 Agent 评测的运营组织；3、基于评测轨迹数据进行 Trace 分析，总结模型典型行为特征。
+要求：2027届本科及以上在读，专业不限；至少 3 个月实习；具备 Claude Code、Codex 等一线 AI 编程工具的重度使用经验；了解 Function Call、多轮规划、上下文管理；能读懂 JSON、日志、基础脚本（Python/SQL），可自行做数据清洗。
+逻辑与拆解能力强：能把模糊的「任务失败」拆解成可验证的步骤链条；求真态度：结论基于实际 Trace 证据。
+加分：构建过评测集或发布过 Benchmark 论文；对 Prompt、模型能力边界有实操感知。`],
+ ['字节 · 推荐算法校招',
+`直播营收推荐算法工程师（基于 LLM 的营收意图判断和推荐）- TikTok · 北京、上海 · 2027届校园招聘 · 研发-算法
+团队：TikTok 搜推算法团队，研究下一代 AI Search 与 Chatbot 核心技术（Multi-Agent、Agentic RL）。
+职责：参与国际化直播推荐算法，构建超大规模推荐系统；用深度学习、因果推断、序列建模优化召回、粗排、精排、混排；驱动用户体验、主播成长与平台营收。
+要求：2027届硕士及以上，计算机、电子、数学相关专业；扎实的数据结构和算法功底；扎实的机器学习/深度学习理论与实践，熟悉主流深度学习框架；顶会论文、ACM/机器学习竞赛获奖，或推荐系统、计算广告、搜索引擎核心算法经验者优先。`],
+ ['AI产品经理 - TRAE',`AI产品经理 - TRAE · 北京/上海 · 2027届校园招聘
+团队介绍：TRAE是字节跳动旗下AI办公工具，产品已上线国际版与中国版，拥有TRAE IDE和TRAE Work两种产品；既可以用TRAE IDE写代码、读项目、改Bug，也可以用TRAE Work写方案、做分析、做应用、推进协作。TRAE当前支持PC、手机、Web多端使用，让用户随时随地高效产出！ Let TRAE Work For You！同时我们正在寻找充满热情、富有创造力的人才。期待你的加入！
+
+1、建设AI产品TRAE，包括用户调研、行业分析、产品设计、用户体验设计、用户运营等；
+2、与产品运营和市场团队保持紧密协作，与开发者社区、用户社区保持紧密沟通，充分传递产品价值，理解客户需求，并落实有效需求到产品中，持续跟进产品的关键数据指标和用户反馈，持续迭代优化产品；
+3、与研发、算法、测试团队保持紧密合作，提升端到端AI效果，推动产品发布和项目落地；
+4、与UI/UX团队保持紧密合作，持续提升产品的视觉交互体验，设计新一代的交互方式。
+职位要求
+1、2027届获得本科及以上学历，计算机、软件工程等相关专业优先；
+2、了解基础的AI技术，例如NLP、机器学习、LLM的大致原理；
+3、具备良好的英语读写能力，能够阅读和理解产品、技术文档和学术论文；
+4、具备良好的主人翁精神和逻辑思维，有创新意识和意愿，有良好的分析能力，愿意独立思考；
+5、有责任感，有跨团队协作能力，以用户价值为先，做热爱用户的产品经理，做用户喜爱的产品。`],
+ ['产品经理 - 业务中台',`产品经理 - 业务中台 · 北京/上海/深圳 · 2027届校园招聘
+团队介绍：团队负责公司多个跨产品业务方向，提供可复用的平台能力及技术解决方案。我们为公司多业务提供如地理位置、行业数据等多类型的中台能力与技术解决方案，积极利用AI等技术做中台能力提效与升级。
+加入我们，你将有机会从中台的多视角参与业务建设，感受不同类型/阶段的业务特点；通过用户场景的开发&架构工作，学习和解决极富挑战的技术问题；你也可以从数据出发，积极利用策略和模型，为业务提供有价值的助力。
+
+1、负责协助产品经理支持地图数据及相关应用能力的建设，包括需求分析、策略方案产出、数据分析、项目进度管理等；
+2、负责协助产品经理梳理字节跳动系产品相关应用场景，以体验、收益为驱动，参与制定解决方案，推动业务需求高效落地；
+3、负责处理业务方反馈的各项问题，梳理当前流程及机制中的问题并及时跟进。
+职位要求
+1、2027届获得本科及以上学历，计算机、通信和地理信息系统等相关专业优先；
+2、具备优秀的自主学习和数据分析能力，有判断力，对数据敏感，逻辑性强，善于发现问题；沟通协作能力强，工作耐心细致，有高度的责任心；
+3、有测绘、数理、AI相关教育或实习背景者优先。`],
+ ['Agent后端开发工程师 - Aime',`Agent后端开发工程师 - Aime · 北京/上海/杭州 · 2027届校园招聘
+团队介绍：Aime 是字节跳动打造的企业级 AI Agent 平台，面向研发、产品、运营等多类岗位，提供基于大模型的智能服务。平台集成代码仓库、文档、知识库、飞书、Browser Use、MCP、研发工具链等企业能力，支持调研、Coding、数据分析、文档生成、Browser Automation 等复杂任务，通过自研 Agent 架构完成端到端日常工作提效。
+
+1、参与企业级AI Agent平台Aime核心后端研发，负责Agent会话管理、任务执行、运行时编排、工具调用和消息流转等关键链路的设计与实现；
+2、参与高可用、高并发后端服务设计，保障Agent在复杂多轮交互、多工具调用场景下的稳定运行，持续提升系统可观测性与线上稳定性；
+3、参与大模型应用工程化能力建设，涵盖多模型接入、上下文管理、流式响应、函数调用等方向；
+4、对接飞书IM、文档等企业协作生态，与产品、算法、平台团队协作，推动AI Agent在真实办公与研发场景中规模化落地。
+职位要求
+1、2027届获得本科及以上学历，计算机、软件工程、人工智能等相关专业；
+2、具备扎实的计算机基础和编程能力，熟悉至少一门主流后端开发语言；具备良好的编码习惯、工程意识和问题定位能力，能在快速变化的业务与技术环境中主动学习、持续迭代；
+3、对AI Agent、大模型应用工程化或后端基础设施方向有浓厚兴趣，有后端服务、AI Agent、RAG、Tool Calling等相关项目或实践经验者优先；
+4、有异步任务、调度系统、消息队列、工作流引擎等复杂后端系统经验，或深度使用过AI编程助手/Agent工具并有自己理解与思考者加分。`],
+ ['后端开发工程师 - 飞书',`后端开发工程师 - 飞书 · 深圳 · 2027届校园招聘
+团队介绍：飞书是字节跳动旗下 AI 工作平台，面向人与agent协作，提供一站式协同办公、组织管理、业务提效工具和深入企业场景的 AI 能力，让 AI 真能用真落地。
+从互联网、高科技、消费零售到制造、金融、医疗健康，各行各业先进企业都在飞书落地AI，与飞书共创行业最佳实践。先进团队，AI用飞书。
+
+1、参与飞书文档及豆包办公创作产品的后端研发，打造自然、流畅的AI内容创作与协作体验；
+2、解决海量内容数据、高并发、高可用、容灾、成本与安全等系统挑战；
+3、建设权限、云空间、知识库等通用能力，探索AI Agent调用云文档能力的新场景。
+职位要求
+1、2027届获得本科及以上学历，计算机、软件工程等相关专业优先；
+2、参与飞书文档及豆包办公创作产品的后端研发，打造自然、流畅的AI内容创作与协作体验；解决海量内容数据、高并发、高可用、容灾、成本与安全等系统挑战；建设权限、云空间、知识库等通用能力，探索AI Agent调用云文档能力的新场景；计算机基础扎实，熟悉Golang、Python、Java、C/C++等至少一门语言；
+3、了解Web后端、数据库、缓存、网络与分布式系统基础，重视代码质量；
+4、学习与动手能力强，关注AI技术发展，重视验证与结果质量；有AI项目或开源实践者加分。`],
+ ['前端开发实习生-Data AML',`前端开发实习生-Data AML · 上海 · ByteIntern/日常实习
+团队介绍：Data AML是字节跳动公司的机器学习中台，为抖音/今日头条/西瓜视频等业务提供推荐/广告/CV/语音/NLP的训练和推理系统。为公司内业务部门提供强大的机器学习算力，并在这些业务的问题上研究一些具有通用性和创新性的算法。同时，也通过火山引擎将一些机器学习/推荐系统的核心能力提供给外部企业客户。此外，AML还在AI for Science，科学计算等领域做一些前沿研究。
+
+1、参与机器学习、大模型前端中台的构建，负责数据可视化、产品设计；
+2、在导师带领下参与核心功能的设计和代码编写，并完成产品、平台和组件的沉淀。
+职位要求
+1、本科及以上学历在读，计算机科学与技术专业优先；
+2、前端基础扎实，熟悉React或者Vue，能熟练开发；
+3、热爱前端技术，始终保持较强的学习能力和主动性；
+4、有前端开发实习经验优先，实习4-6个月，能保持长期实习者优先。`],
+ ['客户端开发实习生-抖音直播',`客户端开发实习生-抖音直播 · 深圳 · ByteIntern/日常实习
+团队介绍：直播团队负责为抖音集团旗下产品提供直播服务。团队负责直播平台技术和直播业务研发，打造灵活稳定的直播服务平台，为用户提供优质直播体验，支持电商、本地生活、游戏、节目、多人互动等不同类型的业务场景。直播业务发展迅猛，处于行业头部地位，业务发展空间巨大。现在加入我们，和优秀的人一起做有挑战的事，你的技术与创意将影响亿级用户，激发创意和丰富生活。
+
+1、负责抖音直播业务及营收业务的客户端开发工作；
+2、参与客户端跨平台业务开发工作；
+3、参与抖音直播全链路体验优化工作。
+职位要求
+1、2027届本科及以上学历在读，计算机相关专业优先；
+2、扎实的数据结构和算法基础；精通至少一门编程语言，包括但不限于：Java、Objective-C、Swift、C、C++；
+3、关注用户体验，能够积极把技术转化到用户体验改进上；
+4、对新技术保持热情，具备良好的分析、解决问题的能力；
+5、可接受客户端零基础同学。`],
+ ['测试开发实习生-Flow',`测试开发实习生-Flow · 杭州 · ByteIntern/日常实习
+团队介绍：字节跳动Flow产品研发团队，专注研究AI智能化相关业务落地，目前落地豆包、Dola等APP，以及对应的Bot开发平台等AI智能化创新产品，业务和团队均处于快速发展期，成长空间大，欢迎各位同学加入！
+
+1、参与字节跳动豆包等产品的智能化测试工作，将传统的测试技术与全球前沿的LLM/Agent技术深度融合，构建创新的智能化质量保障方案；
+2、深度参与产品的完整交付流程，从需求分析到最终上线，全面理解并保障AI产品的质量；
+3、调研业界最新的LLM、Agent相关技术，并探索其在测试开发工作中的创新应用，追求技术的极致与突破；
+4、快速学习并验证前沿AI技术，将其高效应用于日常工作，构建稳定、高效的质量保障服务。
+职位要求
+1、2027届本科及以上学历在读，计算机/软件工程/人工智能相关专业优先；
+2、对AIGC技术有一定的理解和实践经验的优先，如AI Agent、机器学习、自然语言处理等；
+3、扎实的编程基础，熟练使用Python/Go/Java其中一种语言，可进行相关开发；
+4、具备创新意识、快速学习和协同落地能力、积极主动、自我驱动力强；
+5、有AI相关应用测试开发和评测经验者优先。`],
+ ['测试开发实习生-国际化广告质量效能',`测试开发实习生-国际化广告质量效能 · 北京 · ByteIntern/日常实习
+团队介绍：国际化广告质量与效能技术团队致力于构建覆盖广告生态全链路的质量保障体系，并通过技术驱动效能提升，业务范围涵盖广告管理平台、投放系统、审核系统、转化归因及相关基础设施等。
+
+1、深度参与商业变现测试开发工作；
+2、负责Web/Server端产品的业务相关测试；
+3、对测试过程中发现的问题进行跟踪分析和报告；负责跟进Bug迭代进程，积极主动与产品、技术沟通，及时合理的解决测试中发现的问题；
+4、完成产品的集成测试、系统测试，以及必要的自动化测试、性能测试；
+5、推动并监控整个项目流程的实施，评估项目风险，推动问题的解决，保障产品质量。
+职位要求
+1、2027届本科及以上学历在读，计算机等相关专业优先；
+2、能熟悉以下一门或几门语言优先：C/C++/Java；Linux/Shell；
+3、热爱软件测试工作，工作细致认真，有耐心；
+4、沟通表达能力强，快速理解工程和产品的细节；
+5、有大规模系统测试开发经验者优先，熟悉计算广告，或者有相关测试开发经验者优先。`],
+ ['推荐算法实习生-抖音',`推荐算法实习生-抖音 · 深圳 · ByteIntern/日常实习
+团队介绍：Data-抖音团队，负责抖音APP的推荐算法、AI大模型应用、内容算法、智能对话等算法工作，对接全链路各体裁（短视频，直播，图文）各业务（内容消费，UGC，打赏，社交，生态，投稿，消息，汽水音乐，精选，增长投放，评论，内容理解&安全、智能对话等）。我们的工作涉及大规模推荐算法的优化、复杂约束的优化问题的解决、内容理解、LLM技术技术研究、AI落地应用以及新业务方向探索、CV/NLP等多个学术领域的算法改进工作、对多种场景的推荐架构的设计和实现和对产品数据的复杂深入的分析工作。在这里，你可以深入钻研机器学习算法的改进和优化，探索工业界最领先的推荐系统架构和推荐大模型算法、可以通过使用最新的大模型等技术支持抖音的数字人、智能客服、AI工具等创新探索；可以通过对产品的深度理解和思考，将算法应用到业务中去；也可以通过对产品和内容生态的深度分析，影响产品未来的发展方向。
+
+1、负责抖音APP产品的算法工作，共同搭建业界领先的推荐系统、内容理解系统，为用户提供一流的产品体验；
+2、深入理解业务和机器学习技术，优化模型&策略，持续提升推荐效果；
+3、深入理解用户行为，结合数据挖掘等技术，优化用户创作和浏览等体验；
+4、在抖音各个业务场景应用内容算法，改进内容社区的运行效率，支持下游的算法和产品需求；
+5、和产品、运营团队紧密合作，通过对产品和用户的深入理解和分析，制定算法策略促进抖音生态的长期繁荣发展。
+职位要求
+1、2027届本科及以上学历在读，计算机、软件工程等相关专业优先；
+2、具备优秀的编码能力，扎实的数据结构和算法功底；
+3、对推荐算法和机器学习有热情、乐于学习、思考和创新；
+4、优秀的分析问题和解决问题的能力，有良好的沟通表达能力和团队精神；
+5、熟悉机器学习、自然语言处理、数据挖掘中一项或多项，对推荐系统、计算广告、搜索引擎、CV、NLP、语音、LLM、AIGC等相关领域有经验者优先；
+6、每周可实习4天以上，实习时间3个月以上。`],
+ ['推荐算法工程师 - 抖音',`推荐算法工程师 - 抖音 · 上海/深圳/北京 · 2027届校园招聘
+团队介绍：Data-抖音团队，负责抖音APP的推荐算法、AI大模型应用、内容算法、增长算法、广告自动化投放、智能对话等算法工作，对接全链路各体裁（短视频，图文）各业务（内容消费，互动，UGC，双列，社交，生态，垂类，创作，消息，汽水音乐，精选，随变，增长投放，评论，内容理解&安全、智能对话等）。我们的工作涉及大规模推荐算法的优化、多业务复杂约束下的优化问题、多模态内容理解、LLM基础技术研究、业务Agent化和创新AI落地应用、CV/NLP等多个学术领域的算法改进工作、对多种场景的推荐架构的设计和实现和对产品数据的复杂深入的分析工作。在这里，你可以深入钻研机器学习算法的改进和优化，探索工业界最领先的推荐系统架构和推荐大模型算法、可以通过使用最新的大模型技术支持抖音的AI分身、业务智能化、智能客服等创新探索；可以通过对产品的深度理解和思考，将算法应用到业务中去；也可以通过对产品和内容生态的深度分析，影响产品未来的发展方向。
+
+1、负责抖音APP、汽水音乐APP、随变APP产品的算法模块的优化和核心项目的研究与落地，共同搭建业界领先的推荐系统，为用户提供一流的产品体验；
+2、深度参与LLM在推荐系统中的应用，包括生成式推荐、LLM4Rec、LLM as Judge、Agentic Recommendation等，深入理解各场景业务和机器学习技术，优化模型、策略，持续提升推荐效果；
+3、深入了解业务和用户行为，依托海量真实数据，进行数据挖掘和分析建模，持续提升用户体验和留存；
+4、与优秀的技术和产品同学共事，获得充分的技术探索空间和业务影响力，共同促进抖音生态的长期繁荣发展。
+职位要求
+1、2027届获得本科及以上学历，计算机、软件工程等相关专业优先；
+2、具备优秀的编码能力、良好的编程风格和工作习惯，扎实的数据结构和算法功底；
+3、对推荐算法和机器学习有热情、乐于学习、思考和创新；
+4、优秀的分析问题和解决问题的能力，有良好的沟通表达能力和团队精神；
+5、在会议发表论文或ACM、机器学习等竞赛获奖，或有推荐系统、计算广告、搜索引擎等相关领域有经验者优先。`],
+ ['大模型推理系统工程师 - 火山方舟',`大模型推理系统工程师 - 火山方舟 · 杭州/北京/上海 · 2027届校园招聘
+团队介绍：火山方舟是火山引擎推出的一站式大模型服务平台，是中国大模型市场产品和份额领跑者。平台提供模型推理、评测、精调等全流程服务。方舟搭载了豆包及业界主流大模型，提供丰富的插件生态和AI应用开发服务，并通过稳定可靠的安全互信方案、专业的算法技术服务，全方位保障企业级AI应用落地。
+
+1、参与方舟MaaS推理系统工程研发，优化超大规模异构推理集群下的大模型推理性能、成本和稳定性；
+2、通过多角色分离式推理、分布式KV Cache系统、异构推理、弹性计算、多租户混布推理等系统手段，优化大模型推理成本。
+职位要求
+1、2027届获得本科及以上学历，计算机、人工智能、信息安全等相关专业优先；
+2、精通算法、设计模式和数据结构，具备扎实的操作系统、计算机体系结构等知识；
+3、熟练掌握C++，Python等一门或多门编程语言，编程风格良好；
+4、理解GPU硬件架构，熟悉CUDA等高性能计算软件栈，有GPU性能分析的经验；
+5、对分布式系统/大规模异构推理有浓厚兴趣，喜欢钻研底层原理与性能瓶颈，有实际追踪相关领域进展。
+
+以下条件为加分项：
+1、参与过大模型推理系统优化工作，对PD分离、KV Cache系统、多机推理等有实践和认知；
+2、有分布式网络通信优化经验，深入理解分布式通信算子实现原理、RDMA原理等；
+3、了解或应用过K8s、Ray等资源编排调度框架。`],
+ ['大模型安全攻防实习生 - 内容质量与数据服务平台',`大模型安全攻防实习生 - 内容质量与数据服务平台 · 北京 · ByteIntern/日常实习
+团队介绍：抖音内容质量与数据服务平台（简称CQC）归属于抖音集团，负责今日头条、抖音等产品内容和抖音集团商业内容的安全质量与体验。平台下设内容质量中心、商业生态与安全、生态治理与增长支持等业务，在全国20余个城市均有分布。
+自成立以来，CQC持续守护抖音集团旗下包括抖音、今日头条、番茄小说、飞书、红果短剧等产品在内的安全、质量与体验，优化产品内创作与交流环境，且在各产品运营增长方面开展支持工作。
+
+日常实习：面向全体在校生，为符合岗位要求的同学提供为期3个月及以上的项目实践机会。
+
+1、关注行业前沿的模型安全研究方向，持续更新攻防方法论，提升整体安全防御体系的前瞻性与适配性；
+2、通过多种攻防手段（Prompt攻击、越狱构造、红蓝对抗等）挖掘模型潜在的安全缺陷与策略漏洞，持续产出高质量负面样本；
+3、基于攻防分析结果，推动模型及端侧安全能力优化，与模型、安全产品运营团队协作，形成“发现、验证、修复、评估”的闭环，对大模型输出结果进行定量和定性分析，结合数据分析与人工洞察，驱动策略优化升级与模型对齐效果优化。
+职位要求
+1、本科及以上学历在读，计算机、安全工程、人工智能、数学、语言学等相关专业优先；
+2、具备内容安全、模型安全或策略攻防经验者优先；
+3、熟悉大模型工作原理，对Prompt工程、生成式模型（LLM/VLM）及其安全机制有深入兴趣或实践经验；
+4、具备较强的数据分析与逻辑推理能力，具备强烈的探索精神和自我驱动力；
+5、具备良好的跨团队沟通能力与项目推动能力，能独立思考并快速落地成果。`],
+ ['数据分析师 - 番茄小说',`数据分析师 - 番茄小说 · 北京 · 2027届校园招聘
+团队介绍：番茄小说是抖音在 2019 年推出的免费阅读产品，致力于为读者提供优质的阅读体验。番茄小说拥有海量正版小说，涵盖言情、都市、玄幻、悬疑等主流网文类型，以及大量热剧原著和经典出版物，支持用户看书、听书。
+
+1、负责番茄小说相关业务的数据分析工作；
+2、分析各项影响产品提升与增长的因素，结合业务方向，给出可落地的整体产品优化方案；
+3、与产品/运营/研发等配合，推进优化方案落地执行，带来业务的实际提升增长；
+4、负责业务上各类A/B实验设计与分析，产品优化效果、市场活动分析评估等工作；
+5、建设业务分析模型，并不断评估和优化。
+职位要求
+1、2027届获得本科及以上学历，数学、统计学、计算机相关专业优先；
+2、有数据分析经验、一线产品或运营业务优化经验者优先；
+3、逻辑清晰，对数据敏感，能发掘业务细节和数据之间的联系，并通过数据指标推动优化；
+4、精通SQL，熟练使用R/Python进行数据分析、挖掘，掌握Tableau等BI工具尤佳；
+5、具有良好的团队配合能力，沟通能力；
+6、热爱阅读，对小说、漫画、有声书等内容品类产品有深入思考、分析经验者尤佳。`],
+ ['数据分析师 - 今日头条',`数据分析师 - 今日头条 · 北京 · 2027届校园招聘
+团队介绍：产品覆盖今日头条、头条极速版等各类产品，为上亿用户持续提供优质的资讯、视频等服务。我们通过建立良好的内容生态，鼓励优质的原创内容，为创作者提供优质的服务和创作体验，促进创作和交流，同时我们致力于通过尽可能丰富的内容体裁和尽可能多的分发方式，连接人与信息，丰富大家的精神生活，让人们看到更大的世界。
+
+1、负责字节跳动泛文娱长内容赛道相关业务的数据分析、经营分析工作；
+2、分析各项影响产品提升与增长的因素，结合业务方向，给出可落地的整体产品优化方案；
+3、与产品、运营、研发等配合，推进优化方案落地执行，带来业务的实际提升增长；
+4、负责业务上各类A/B实验设计与分析，产品优化效果、市场活动分析评估等工作；
+5、建设业务分析模型，并不断评估和优化；
+6、与战略、业务团队密切配合，为业务团队提供决策支持，和业务方共同探索业务模式并提供策略设计，分析和落地支持。
+职位要求
+1、2027届获得本科及以上学历，数学、统计学、计算机、软件相关专业优先；
+2、有数据分析、策略分析、经营分析相关实习经验者优先；
+3、逻辑清晰，对数据敏感，能发掘业务细节和数据之间的联系，并通过数据指标推动优化；
+4、对泛文娱领域怀有兴趣，并有所思考；
+5、精通SQL，熟练使用R/Python进行数据分析、挖掘。`],
+ ['产品运营实习生 - 抖音生活服务',`产品运营实习生 - 抖音生活服务 · 北京 · ByteIntern/日常实习
+团队介绍：抖音生活服务依托抖音POI （Point of Interest）、短视频、直播、搜索等，以“激发线下生意，丰富美好生活”为使命，致力于成为最值得信赖的生活服务平台，为用户提供更丰富、独特的生活体验，为合作伙伴提供包容且公平的健康营商生态。截至2025年底，抖音生活服务业务已覆盖400+城市，超过1500万家动销门店。抖音生活服务将继续携手生态伙伴，为用户提供值得心动的商品和服务。
+
+日常实习：面向全体在校生，为符合岗位要求的同学提供为期3个月及以上的项目实践机会。
+
+1、聚焦生活服务产品能力接入流程优化与策略支持，负责商家营销、供给接入等功能模块的配置支持工作，保障商家功能使用的顺畅性；
+2、参与商家准入环节的产品评估，制定并输出标准化SOP指引，明确准入评估标准与操作流程，提升准入环节的规范性与效率；
+3、主导加入白名单配置策略的制定与执行，涵盖权限开通、功能灰度发布等场景，协同产品、技术团队推动配置工具迭代，优化运营流程，提升配置准确性与效率；
+4、以数据驱动解决问题，监控商家接入、功能配置全流程的关键指标（如审核通过率、配置错误率、商家反馈满意度等），通过数据分析定位问题根源；
+5、基于数据洞察输出流程优化方案，推动方案落地执行，同时定期输出运营报告，抽象商家共性需求，为产品功能迭代与优化提供决策输入。
+职位要求
+1、本科及以上学历在读；
+2、实习周期需满足每周至少出勤4天，且持续3个月以上；逻辑思维清晰，具备数据敏感度，能快速理解复杂业务流程，掌握基础数据分析能力（如Excel函数运用、SQL数据提取），可通过数据论证问题并支撑决策；
+3、具备优秀的沟通与跨团队协作能力，能高效联动产品、技术等多方团队，清晰表达观点与需求，推动问题高效解决；
+4、工作主动性强，有责任心，不仅满足于简单执行任务，愿意深入业务背景挖掘核心需求，主动发现流程优化点并提出可行解决方案；
+5、有产品运营、业务流程管理或工具类项目实习/工作经验者优先，熟悉生活服务行业者加分。`],
+ ['产品运营实习生 - AI 工具运营',`产品运营实习生 - AI 工具运营 · 北京 · ByteIntern/日常实习
+团队介绍：AI 工具运营部门，是抖音集团旗下为中国内容质量与数据服务平台提供运营管理、技术赋能、产品优化等专业解决方案的团队；主要承接平台产品运营、辅助功能开发、独立工具建设相关的业务，与产品、技术等团队紧密合作，在作业平台能力优化、审核 / 标注 / 采集能力赋能、空白场景工具建设等 AI 工具全链路运营环节，共同推动工具作业质量及效率持续提升、风险 case 有效降低与技术体系不断完善。”
+
+日常实习：面向全体在校生，为符合岗位要求的同学提供为期3个月及以上的项目实践机会。
+
+1、协同管理运营需求全流程，支撑全量需求的统一承载与闭环运转，跟踪需求从提报到交付的全链路效率，推动流程透明化与提效；
+2、负责部门内需求管理相关数据监控及日常运营，跟踪需求交付对业务指标的实际影响，支撑业务周会数据公开信息；
+3、对需求健康度进行数据分析（需求分布、异常/滞留占比等），识别风险需求并跟踪交付；
+4、通过Bot、文档、会议等渠道宣传推广产品/工具/插件类标杆提效案例，推动跨群组工具复用提升。
+职位要求
+1、本科及以上学历在读；
+2、每周可实习至少3天，实习周期不少于6个月；
+3、技能要求：熟练使用数据透视表、函数等，有数据整理或看板搭建经验者优先；
+4、具备良好的逻辑思维和自我驱动能力，能清晰梳理业务流程并推动跨团队协作。
+
+加分项：
+1、有需求管理、项目运营或行业实习经验优先；
+2、关注Al前沿技术动态，具备Skill使用或搭建经验者优先。`],
+ ['创意视觉设计师 - 番茄小说',`创意视觉设计师 - 番茄小说 · 深圳 · 2027届校园招聘
+团队介绍：番茄小说是抖音在 2019 年推出的免费阅读产品，致力于为读者提供优质的阅读体验。番茄小说拥有海量正版小说，涵盖言情、都市、玄幻、悬疑等主流网文类型，以及大量热剧原著和经典出版物，支持用户看书、听书。
+
+1、负责番茄小说、番茄畅听、红果短剧、创新产品等业务的视觉设计工作，包括但不限于产品体验、品牌宣发、运营活动、IP形象等相关设计工作；
+2、结合业务特性分析需求目标，完成前期创意和设计执行落地，为项目提供有创意和想象力的设计方案；
+3、关注新风格，新技术，具备设计敏感度，参与设计侧驱动的创新探索。
+职位要求
+1、2027届获得本科及以上学历，艺术、美术、视觉设计等相关专业优先；
+2、熟练使用基础设计软件，Photoshop、AI、Figma或AE、C4D等，有良好的平面设计能力与审美；
+3、具备品牌思维、创意能力、娴熟的绘画技巧，对设计流行趋势有敏锐的洞察力，能够突破传统进行设计创新，可以熟悉使用AIGC工具并有实际应用经验优先；
+4、善于与人沟通、思维清晰，具备良好的团队合作精神、强烈的学习热情和自驱力，乐于分享。`],
+ ['创意设计师 - 抖音生活服务',`创意设计师 - 抖音生活服务 · 北京/上海 · 2027届校园招聘
+团队介绍：抖音生活服务依托抖音POI （Point of Interest）、短视频、直播、搜索等，以“激发线下生意，丰富美好生活”为使命，致力于成为最值得信赖的生活服务平台，为用户提供更丰富、独特的生活体验，为合作伙伴提供包容且公平的健康营商生态。截至2025年底，抖音生活服务业务已覆盖400+城市，超过1500万家动销门店。抖音生活服务将继续携手生态伙伴，为用户提供值得心动的商品和服务。
+
+1、负责抖音生活服务线下业务的创意视觉工作，包含线下物料的设计，制定创意方案，创作主视觉，完善设计细节；
+2、关注行业内设计趋势，有过一定线下物料、周边礼品、包装设计经验；
+3、洞察和分析设计趋势，研究目标用户审美倾向，定制符合体验且有创意的设计方案。
+职位要求
+1、2027届获得本科及以上学历，设计类专业优先；
+2、可独立完成设计工作，有较好的平面排版及主视觉创造能力，能很好的整合信息及元素，完成各种风格的画面设计；
+3、有较强创意能力，富有好奇心和娴熟的设计技巧，能够突破传统创造新的视觉语言；
+4、会用AI工具辅助创意设计、落地设计物料；
+5、良好的团队合作精神，细心，具有较强责任感。`]];
+
+/* 在招岗位库：爬自 jobs.bytedance.com 校招/实习列表（2026-09） */
+const JOBLIB=[
+ {t:'豆包AI大模型Agent评测产品实习生 - 火山方舟', city:'上海/北京', jd:0},
+ {t:'直播营收推荐算法工程师 - TikTok', city:'北京/上海', jd:1},
+ {t:'AI产品经理 - TRAE', city:'北京/上海', jd:2},
+ {t:'产品经理 - 业务中台', city:'北京/上海/深圳', jd:3},
+ {t:'Agent后端开发工程师 - Aime', city:'北京/上海/杭州', jd:4},
+ {t:'后端开发工程师 - 飞书', city:'深圳', jd:5},
+ {t:'前端开发实习生-Data AML', city:'上海', jd:6},
+ {t:'客户端开发实习生-抖音直播', city:'深圳', jd:7},
+ {t:'测试开发实习生-Flow', city:'杭州', jd:8},
+ {t:'测试开发实习生-国际化广告质量效能', city:'北京', jd:9},
+ {t:'推荐算法实习生-抖音', city:'深圳', jd:10},
+ {t:'推荐算法工程师 - 抖音', city:'上海/深圳/北京', jd:11},
+ {t:'大模型推理系统工程师 - 火山方舟', city:'杭州/北京/上海', jd:12},
+ {t:'大模型安全攻防实习生 - 内容质量与数据服务平台', city:'北京', jd:13},
+ {t:'数据分析师 - 番茄小说', city:'北京', jd:14},
+ {t:'数据分析师 - 今日头条', city:'北京', jd:15},
+ {t:'产品运营实习生 - 抖音生活服务', city:'北京', jd:16},
+ {t:'产品运营实习生 - AI 工具运营', city:'北京', jd:17},
+ {t:'创意视觉设计师 - 番茄小说', city:'深圳', jd:18},
+ {t:'创意设计师 - 抖音生活服务', city:'北京/上海', jd:19},
+ {t:'商家产品运营实习生 - 抖音电商', city:'上海', jd:null},
+ {t:'大语言模型算法工程师校招 - Commercial AI', city:'北京/上海', jd:null},
+];
+function searchJobs(q){
+  const ws=q.toLowerCase().split(/[\s，,、]+/).filter(w=>w.length>=1);
+  if(!ws.length) return [];
+  return JOBLIB.map(j=>({j, sc:ws.reduce((a,w)=>a+(j.t.toLowerCase().includes(w)?w.length:0),0)}))
+    .filter(x=>x.sc>0).sort((a,b)=>b.sc-a.sc).slice(0,5).map(x=>x.j);
+}
+function renderPicked(){
+  $('#pickedjobs').innerHTML=(S.pickedJobs||[]).map(j=>{
+    const [name,dept]=j.t.split(/ - /);
+    return `<div class="jobrow picked" data-pk="${j.t}">
+      <div class="jr-t">✓ ${name}</div>
+      <div class="jr-m">${dept?dept+' · ':''}${j.city} · 已投递 <i class="jrn">${rowN(j)}</i>${j.jd!=null?' · 点击看 JD':''}</div>
+      <button class="pk-x" data-rm="${j.t}" title="移除">×</button>
+    </div>`;
+  }).join('');
+}
+$('#pickedjobs').addEventListener('click',e=>{
+  const b=e.target.closest('[data-rm]');
+  if(!b){
+    const card=e.target.closest('[data-pk]');
+    if(card){ const j=S.pickedJobs.find(x=>x.t===card.dataset.pk);
+      if(j){ S.pickedJob=j; toggleJdView(j); } }
+    return;
+  }
+  S.pickedJobs=S.pickedJobs.filter(j=>j.t!==b.dataset.rm);
+  renderPicked();
+  // 哪里来的回哪去：移除岗位时把展开的 JD 预览一并收起
+  if($('#selrows').style.display==='none') $('#selfield').style.display='none';
+  if(!S.pickedJobs.length){ S.jobLocked=false; S.selTouched=false; renderMode(); renderSum(null); }
+  else renderMode(), renderSrc();
+});
+function parkMovables(){
+  for(const id of ['jdfield','selfield']){
+    const el=$('#'+id);
+    if(el && $('#joblist').contains(el)) $('#park').appendChild(el);
+  }
+}
+function pickJob(j){
+  parkMovables(); S.ans={};
+  S.pickedJobs=S.pickedJobs||[];
+  if(S.pickedJobs.some(x=>x.t===j.t)) return;
+  S.pickedJobs.push(j);
+  S.pickedJob=j;
+  renderPicked();
+  // 标准搜索框行为：选中即替换、列表收起；再输入可继续多选相近岗
+  $('#rolesearch').value='';
+  $('#rolesearch').placeholder='继续搜索可多选相近岗位';
+  $('#joblist').innerHTML='';
+  if(S.pickedJobs.length>1){ renderMode(); renderSrc(); return; }   // 定位以第一个岗为准
+  if(j.jd!=null){
+    parseJDText(JDS[j.jd][1]);                       // 有全文：完整解析（含硬条件）
+    S.det={role:1,sub:1,stage:1,tk:1};
+    $('#selrows').style.display='none';
+    renderSum(null);
+  } else {
+    updateConf(detectSel(j.t));                      // 只有标题：定位选择
+  }
+  $('#jsheet').classList.remove('on');
+}
+function toggleJdView(j){
+  if(!j) return;
+  if(j.jd==null){                                    // 没 JD：进入补充环节
+    $('#jdfield').style.display='block'; $('#jdwrap').style.display='block';
+    $('#jdwrap').scrollIntoView({behavior:'smooth',block:'nearest'});
+    return;
+  }
+  $('#js-title').textContent=j.t.split(/ - /)[0];
+  $('#jsbody').contentEditable='true';
+  $('#js-tip').style.display='';
+  $('#js-import').style.display='none';
+  $('#jsbody').textContent=JDS[j.jd][1];
+  $('#jsheet').classList.add('on');
+}
+$('#js-close').onclick=()=>$('#jsheet').classList.remove('on');
+$('#jsheet').addEventListener('pointerdown',e=>{ if(e.target.id==='jsheet') $('#jsheet').classList.remove('on'); });
+let jsT; $('#jsbody').addEventListener('input',()=>{
+  clearTimeout(jsT); jsT=setTimeout(()=>parseJDText($('#jsbody').innerText.trim()),450);
+});
+
+
+/* ---- JD 是入口，但它说不清的那部分才是重点。粘进来自动读 ---- */
+function detectSel(jd){
+  const det={};
+  let tk=trackOf(jd);
+  if(!tk){                                                // JD 里明写赛道名：计分取最多者，别被顺带一提的词抢走
+    const alias={ai:['AI','Agent','大模型','LLM','智能'],ecom:['电商','交易'],social:['社区','内容'],saas:['企业服务','SaaS']};
+    let bt=null,bs=0;
+    for(const k in TRACKS){
+      let c0=0;
+      for(const w of [...TRACKS[k].name.split(/[\s/]+/),...(alias[k]||[])])
+        if(w.length>1||w==='AI') c0 += jd.split(w).length-1;
+      if(c0>bs){bs=c0;bt=k}
+    }
+    tk=bt;
+  }
+  if(tk){ S.tk=tk; det.tk=1;
+          [...$('#f-track').children].forEach(c=>c.setAttribute('aria-pressed',c.dataset.v===tk)); }
+  // 第一轮：明确岗位名直接定案（标题信号最强）
+  for(const [re,role] of [
+      [/产品经理|产品实习生|产品负责人|数据分析师/,'产品'],
+      [/(后端|前端|客户端|全栈|算法|推荐|机器学习|推理系统|大模型|测试)[^，。\n]{0,6}(工程师|开发实习生|实习生)|开发工程师|研发工程师|测试开发/,'研发'],
+      [/设计师/,'设计'],
+      [/运营(实习生|专员|经理|负责人)/,'运营']])
+    if(re.test(jd)){ S.role=role; det.role=1;
+      [...$('#f-role').children].forEach(c=>c.setAttribute('aria-pressed',c.dataset.v===role));
+      renderSub(); break; }
+  // 第二轮兜底：组合词弱信号 ——「和研发团队协作」「设计背景加分」这类顺带一提不算
+  if(!det.role) for(const [re,role] of [[/测试开发|测开|QA|算法工程|算法研究|Algorithm|基模|后训练|Post-?Training|推荐系统|研发工程|开发工程师|后端|前端|客户端|全栈|数据研发|数仓/i,'研发'],
+                          [/市场类|品牌营销|公关|增长营销|市场负责人/,'市场'],[/运营(实习生|专员|经理|负责人|类)|内容运营|用户运营|商家运营|产品运营/,'运营'],[/设计师|UI|UX|视觉设计/i,'设计'],
+                          [/HR|人力资源|财务|法务|行政/i,'职能'],[/产品|增长/,'产品']])
+    if(re.test(jd)){ S.role=role; det.role=1;
+      [...$('#f-role').children].forEach(c=>c.setAttribute('aria-pressed',c.dataset.v===role));
+      renderSub(); break; }
+  for(const [re2,sub] of [[/测试开发|测开|QA/i,'测试开发'],
+      [/基模|预训练|pretrain|后训练|对齐|RLHF|SFT|大模型/i,'算法 · 基模 / 后训练'],
+      [/推荐系统|搜索算法/,'算法 · 推荐 / 搜索'],
+      [/前端|Web ?端/i,'前端'],[/客户端|iOS|Android/i,'客户端'],[/数仓|数据研发/,'数据研发'],[/后端|服务端/,'后端'],
+      [/ToB|B ?端|企业客户|商家侧/i,'ToB'],[/ToC|C ?端|消费者/i,'ToC'],
+      [/平台型|中台/,'平台 / 中台']])
+    if(re2.test(jd)&&(SUBROLE[S.role]||[]).includes(sub)){ S.sub=sub; S.subKnown=true; det.sub=1; renderSub(); break; }
+  const st = /实习生|ByteIntern|实习招聘|个月实习/.test(jd) ? '实习'
+           : /校园招聘|校招|应届|\d{2}届/.test(jd) ? '校招'
+           : /社招|社会招聘|年以上|资深|负责人|多年经验/.test(jd) ? '社招' : (/实习/.test(jd)?'实习':null);
+  if(st){ S.year=st; det.stage=1;
+          [...$('#f-year').children].forEach(c=>c.setAttribute('aria-pressed',c.dataset.v===st)); }
+
+  return det;
+}
+function renderSum(){
+  // 定位回执并入池子行 —— 不再单独占一行
+  if(S.jobLocked) $('#libhint').textContent=` · ${S.role}${S.subKnown?' · '+S.sub:''} · ${S.year}`;
+}
+function updateConf(det){
+  if(det&&(det.role||det.stage||det.tk||det.sub)) S.selTouched=true;
+  S.det=det||{};
+  const Q={role:'招的是什么职能？',stage:'招实习、校招还是社招？',tk:'业务属于哪个赛道？'};
+  const missing=[['role'],['stage'],['tk']].filter(([k])=>!S.det[k]);
+  renderSum(null);
+  // 粗筛：答过的行留着（向下累积），当前问题追加在下；全答完就地出数字
+  const rows=$$('#selrows .selrow');
+  const anyAns=Object.keys(S.ans||{}).length>0;
+  if(det && (missing.length||anyAns)){
+    $('#selfield').style.display='block';
+    $('#selrows').style.display='block';
+    rows.forEach(r=>{ const k=r.dataset.k;
+      r.style.display=((S.ans&&S.ans[k])||(missing.length&&missing[0][0]===k))?'flex':'none'; });
+    if(missing.length){
+      $('#selq').textContent=Q[missing[0][0]];
+      $('#selq').style.color='var(--ink)';
+    } else {
+      $('#selq').innerHTML=`<span style="color:var(--pick)">✓ 已载入 ${poolN()} 份简历</span>`;
+    }
+  } else {
+    $('#selrows').style.display='none';
+    $('#selfield').style.display='none';
+  }
+  const coreOK = !!(det && det.role && det.stage);
+  if(coreOK!==S.jobLocked){ S.jobLocked=coreOK; renderMode(); if(S.jobLocked) renderSrc(); }
+  if(det&&Object.keys(S.det||{}).some(k=>S.det[k])&&$('#nmnear')) $('#nmnear').style.display='none';
+  // 全部撤回（JD 清空 / 粗筛全取消）→ 建议区回来
+  if($('#nmnear') && !Object.keys(S.ans||{}).length && !$('#jd').value.trim()
+     && !(det&&Object.keys(det).some(k=>det[k]))) $('#nmnear').style.display='';
+}
+
+function parseJD(){ parseJDText($('#jd').value.trim()); }
+function parseJDText(jd){
+  if(/^https?:\/\/\S+$/i.test(jd)){
+    $('#jdout').innerHTML='<div class="lwhy">读链接需要后端抓取 —— 先把 JD 文字粘进来。</div>';
+    return;
+  }
+  if(jd.length<3){
+    $('#jdout').innerHTML='';
+    if(S.jdApplied && !(S.pickedJobs&&S.pickedJobs.length)){
+      S.jdApplied=false; S.jdF=null; S.F=blankF(); S.Fdraft=blankF();
+      S.det={}; S.ans={}; S.jobLocked=false; S.selTouched=false;
+      renderMode(); renderSum(); updateConf(null);
+    }
+    return;
+  }
+  const got=[];
+  const det=detectSel(jd);
+  const F=blankF();
+  const code=['Python','SQL','Java','Go','JS/TS','C++'].filter(c=>
+    new RegExp(c==='C++'?'C\\+\\+':c==='JS/TS'?'\\b(JS|TS)\\b|JavaScript|TypeScript|React|Vue':c,'i').test(jd));
+  if(code.length){ F.code=code; got.push(['编程语言',code.join(' + ')]); }
+  if(/985|211|双一流|名校/.test(jd)){ F.school=['t1','t2']; got.push(['院校','985 / 211']); }
+  else if(/QS ?\d|海外|留学/.test(jd)){ F.school=['t1','sea']; got.push(['院校','头部 / 海外']); }
+  if(/英语.{0,4}(可工作|工作|流利)|雅思|托福/.test(jd)){ F.lang=['en_work']; F.langText='英语可工作'; got.push(['语言','英语可工作']); }
+  else if(/英语|CET|六级/.test(jd)){ F.lang=['en_daily']; F.langText='英语可日常'; got.push(['语言','英语可日常']); }
+  const ag=jd.match(/(\d{2})\s*[-–~到]\s*(\d{2})\s*岁|(\d{2})\s*岁以下/);
+  if(ag){ F.age=ag[3]?[18,+ag[3]]:[+ag[1],+ag[2]]; got.push(['年龄',`${F.age[0]}–${F.age[1]} 岁`]); }
+  S.jdF=F;
+  S.F=JSON.parse(JSON.stringify(F));      // JD 的硬条件当场生效，后续收窄在其上叠加
+  S.Fdraft=JSON.parse(JSON.stringify(F));
+
+  if(jd.length<50){
+    $('#jdout').innerHTML=`<div class="ev" style="color:var(--warn)">信息太少，请补充职责和要求（50 字以上）。</div>`;
+    return;
+  }
+  // 够长就当真 JD：直接锁岗载入简历池。识别不出的职能/阶段用当前值兜底，
+  // 只剩下的缺项走问句，不允许 updateConf 把锁撤回去
+  det.role=det.role||1; det.stage=det.stage||1;
+  S.selTouched=true; S.jdApplied=true;
+  S.jobLocked=true; renderMode(); renderSrc(); renderSum();
+  // JD 一改，池子跟着变：按最新岗位重建预览池，按硬条件过滤计数
+  S.deckForJob=null; ensureDeckPreview();
+  const fitN=S.deck.filter(c=>passes(c,S.F)).length;
+  tweenNum($('#libtotal'), fitN);
+  $('#libhint').textContent=activeCount(S.F)?' · 符合 JD 要求':' · 匹配本岗位';
+  $('#jdout').innerHTML =
+    `<div class="ev" style="color:var(--pick)">✓ 已按 JD 载入 ${fitN} 份简历${activeCount(S.F)?`，硬性条件生效 ${activeCount(S.F)} 条`:''}</div>`
+    + (got.length?`<div class="ev" style="line-height:2.1;margin-top:6px">${got.map(([k,v])=>`<span class="tag" style="margin:3px 4px 0 0">${k} · ${v}</span>`).join('')}</div>`:'');
+  updateConf(det);
+}
+let jdT; $('#jd').addEventListener('input',()=>{
+  if($('#nmnear')&&$('#jd').value.trim()) $('#nmnear').style.display='none';
+  clearTimeout(jdT); jdT=setTimeout(parseJD,400);
+});
+let rsT; $('#rolesearch').addEventListener('input',e=>{
+  clearTimeout(rsT);
+  rsT=setTimeout(()=>{
+    const t=e.target.value.trim();
+    if(t.length<1){ parkMovables(); S.ans={}; $('#joblist').innerHTML='';
+      if(!(S.pickedJobs&&S.pickedJobs.length)){ S.jobLocked=false; renderMode(); renderSum(null); }
+      return; }
+    parkMovables();
+    const hits=searchJobs(t);
+    $('#joblist').innerHTML = hits.length
+      ? hits.map(j=>{
+          const [name,dept]=j.t.split(/ - /);
+          const st2=/实习/.test(j.t)?'实习':'校招';
+          return `<button class="jobrow" data-jt="${j.t}">
+            <div class="jr-t">${name}</div>
+            <div class="jr-m">${dept?dept+' · ':''}${j.city} · ${st2} · 已投递 <i class="jrn">${rowN(j)}</i></div>
+          </button>`;
+        }).join('')
+      : (()=>{
+          // 库里没有：两条路并列 + 相邻岗建议
+
+          const det0=detectSel.__probe ? null : null;
+          const guessRole=(()=>{ const d={}; const bak={role:S.role,sub:S.sub,year:S.year,tk:S.tk};
+            const r=detectSel(t); Object.assign(S,bak); renderSub(); return r.role?S.role:null; })();
+          const near=JOBLIB.filter(j=>!guessRole||titleRoleOf(j.t)===guessRole).slice(0,3);
+          return `<div class="ev" style="margin:10px 0 8px">库里没有「${t.slice(0,16)}」</div>
+            <div style="display:flex;gap:8px">
+              <button class="tbtn" id="nojd">写 / 贴 JD</button>
+              <button class="tbtn" id="rough">先粗筛</button>
+            </div>
+            <div id="nmslot"></div>
+            ${near.length?`<div id="nmnear"><div class="ev" style="margin:12px 0 2px">你可能感兴趣</div>`+
+              near.map(j=>{ const [name,dept]=j.t.split(/ - /);
+                return `<div class="jobrow" data-jt="${j.t}">
+                  <div class="jr-t">${name}</div>
+                  <div class="jr-m">${dept?dept+' · ':''}${j.city} · 已投递 <i class="jrn">${rowN(j)}</i>
+                    ${j.jd!=null?`<button class="linkish nm-view" data-ji="${j.jd}" style="margin:0 0 0 8px">看 JD</button>
+                    <button class="linkish nm-copy" data-ji="${j.jd}" style="margin:0 0 0 8px">用作底稿</button>`:''}
+                  </div>
+                  <div class="nm-jd" style="display:none"></div>
+                </div>`;}).join('')+'</div>':''}`;
+        })();
+    if(!hits.length){
+      const tabJD=()=>{
+        $('#park').appendChild($('#selfield')); $('#selfield').style.display='none';
+        $('#nmslot').appendChild($('#jdfield'));
+        $('#jdfield').style.display='block'; $('#jdwrap').style.display='block';
+        $('#nojd').setAttribute('aria-pressed','true'); $('#rough').setAttribute('aria-pressed','false');
+        $('#jd').focus();
+      };
+      $('#nojd').onclick=tabJD;
+      $('#rough').onclick=()=>{
+        $('#park').appendChild($('#jdfield')); $('#jdfield').style.display='none';
+        $('#nmslot').appendChild($('#selfield'));
+        updateConf(detectSel(t));
+        $('#rough').setAttribute('aria-pressed','true'); $('#nojd').setAttribute('aria-pressed','false');
+      };
+      $$('#joblist .nm-view').forEach(b=>b.onclick=e=>{
+        e.stopPropagation();
+        const box=b.closest('.jobrow').querySelector('.nm-jd'), on=box.style.display!=='none';
+        box.style.display=on?'none':'block';
+        if(!on) box.textContent=JDS[+b.dataset.ji][1];
+        b.textContent=on?'看 JD':'收起';
+      });
+      $$('#joblist .nm-copy').forEach(b=>b.onclick=e=>{
+        e.stopPropagation();
+        tabJD();
+        $('#jd').value=JDS[+b.dataset.ji][1]; parseJD();
+        $('#jd').scrollIntoView({behavior:'smooth',block:'center'});
+      });
+    }
+  },250);
+});
+$('#joblist').addEventListener('click',e=>{
+  const r=e.target.closest('.jobrow'); if(!r) return;
+  pickJob(JOBLIB.find(j=>j.t===r.dataset.jt));
+});
+$('#jdtoggle').onclick=()=>{
+  const w=$('#jdwrap'), on=w.style.display!=='none';
+  w.style.display=on?'none':'block';
+  $('#jdtoggle').textContent=on?'写 / 贴 JD →':'收起';
+};
+
+$('#start').onclick=()=>{
+  if(!S.jobLocked) return;
+  const chosen=chosenPresets();
+  S.F=S.F||blankF();
+  S.Fdraft=JSON.parse(JSON.stringify(S.F)); S.preNotes=[];
+  S.deck0=buildDeck(S.tk,null,S.role,S.year);                          // deck0 = 未筛选的参考池，用来算真实通过率
+  if(chosen.length){
+    const m=mergePresets([{F:S.F,notes:[]},...chosen]);
+    S.F=m.F; S.Fdraft=JSON.parse(JSON.stringify(m.F)); S.preNotes=m.notes;
+  }
+  const raw=poolDocs();
+  if(raw.length>=1){
+    const all=raw.map((d,i)=>({...cardFromCV(d.text,S.tk,i), src:d.src}));
+    S.deck=all.filter(c=>passes(c,S.F));                 // JD 粗筛
+    S.realTotal=all.length;
+    if(S.deck.length<8 && all.length>S.deck.length)
+      S.relaxMsg=`符合条件的只有 ${S.deck.length} 份。 <button class="tbtn" id="lwiden">扩大到本岗位全部 ${all.length} 份</button>`;
+
+  } else {
+    S.deck=activeCount(S.F)?buildDeck(S.tk,S.F,S.role,S.year):S.deck0;
+  }
+  S.pool=[...S.deck]; S.i=0; S.stack=[]; S.decisions=[]; S.annos={}; S.ck=false; S.autoDone=false;
+  const seenN=new Set(); S.notes=[];
+  for(const g of loadMemAll().general||[])
+    if(g.text&&!seenN.has(g.text)){ seenN.add(g.text); S.notes.push({...g,gen:true}); }
+  for(const x of (S.preNotes||[]))
+    if(x.text&&!seenN.has(x.text)){ seenN.add(x.text); S.notes.push({...x}); }
+  FIT=null; refit();
+  renderNotes(); $('#lwhy').style.display='none';
+  stage.querySelectorAll('.card').forEach(n=>n.remove());
+  const jt = S.pickedJobs&&S.pickedJobs.length
+    ? S.pickedJobs[0].t.split(/ - /)[0] + (S.pickedJobs.length>1?` 等 ${S.pickedJobs.length} 岗`:'')
+    : `${S.role}${S.subKnown?' · '+S.sub:''} · ${S.year} · ${TRACKS[S.tk].name}`;
+  $('#jobtag').textContent=jt + (REAL()?`　${S.deck.length}/${S.realTotal}`:'');
+  $('#tinput').placeholder='新的偏好 / 判断标准…';
+  const histN=loadMemJob().filter(h=>!S.notes.some(n=>n.text===h.text)).length;
+  $('#histlink').style.display=histN?'block':'none';
+  $('#histlink').textContent=`查看历史偏好（${histN}）→`;
+  fill(); layout(false); tick(); show('deck');
+  if(S.relaxMsg){
+    $('#lwhy').innerHTML=S.relaxMsg; $('#lwhy').style.display='block';
+    setTimeout(()=>{ if($('#lwhy').innerHTML===S.relaxMsg) $('#lwhy').style.display='none'; S.relaxMsg=null; }, 9000);
+  }
+};
+function renderStarSheet(){
+  const row=(c,btn)=>`<div class="sec ss-yes" data-ssn="${c.name}" style="cursor:pointer;display:flex;gap:10px;align-items:center">
+    <div style="flex:1;min-width:0">
+      <div class="bv" style="font-weight:600;font-size:15.5px">${c.name}<span style="color:var(--ink3);font-weight:400;font-size:13px"> · ${c.school} · ${c.exp1.co}</span></div>
+      ${(S.starNotes||{})[c.name]?`<div class="bd">${S.starNotes[c.name]}</div>`:''}
+    </div>${btn}</div>`;
+  const stars=[
+    ...S.decisions.filter(d=>d.v==='star').map(d=>d.card),
+    ...(S.importedStars||[]).map(r=>({name:r.n, school:r.sc, exp1:{co:r.co}, _imp:true}))
+  ];
+  const yes=S.decisions.filter(d=>d.v==='yes').map(d=>d.card);
+  S.starStatus=S.starStatus||{};
+  const starRow=c=>{
+    const st=S.starStatus[c.name]||'待约';
+    return `<div class="sec ss-star" data-ssn="${c.name}" style="cursor:pointer">
+      <div style="display:flex;gap:10px;align-items:center">
+        <div style="flex:1;min-width:0">
+          <div class="bv" style="font-weight:600;font-size:15.5px"><svg class="sparkle" viewBox="0 0 24 24" style="width:12px;height:12px;margin-right:5px"><path d="M12 0c.5 6.3 5.2 11 11.5 11.5v1C17.2 13 12.5 17.7 12 24h-1C10.5 17.7 5.8 13 -.5 12.5v-1C5.8 11 10.5 6.3 11 0h1z"/></svg>${c.name}<span style="color:var(--ink3);font-weight:400;font-size:13px"> · ${c.school} · ${c.exp1.co}</span></div>
+          ${(S.starNotes||{})[c.name]?`<div class="bd">${S.starNotes[c.name]}</div>`:''}
+        </div>
+        ${c._imp?`<button class="tbtn ss-rm" data-n="${c.name}">移除</button>`:`<button class="tbtn ss-down" data-n="${c.name}">移到可聊</button>`}
+      </div>
+      <div class="ss-st">${['待约','已约面','已面试','通过'].map(x=>
+        `<button class="chip ss-set" data-n="${c.name}" data-st="${x}" aria-pressed="${st===x}">${x}</button>`).join('')}</div>
+    </div>`;
+  };
+  $('#sslist').innerHTML=
+    `<div class="rh" style="font-size:13px;color:var(--ink)">✦ 直接约面</div>`
+    +(stars.map(starRow).join('')
+      ||'<div class="ev" style="margin-bottom:8px;font-size:14px">还没有，上滑或点 ✦ 选中。</div>')
+    +`<div class="rh" style="margin-top:14px;font-size:13px;color:var(--ink)">✓ 可以聊</div>`
+    +(yes.map(c=>row(c,`<button class="tbtn ss-up" data-n="${c.name}">✦ 约面</button>`)).join('')
+      ||'<div class="ev" style="font-size:14px">还没有。</div>');
+}
+$('#starbtn').onclick=()=>{ renderStarSheet(); $('#ssheet').classList.add('on'); };
+$('#sslist').addEventListener('click',e=>{
+  const st=e.target.closest('.ss-set');
+  if(st){ e.stopPropagation(); (S.starStatus=S.starStatus||{})[st.dataset.n]=st.dataset.st; renderStarSheet(); return; }
+  const rm=e.target.closest('.ss-rm');
+  if(rm){ e.stopPropagation(); S.importedStars=(S.importedStars||[]).filter(x=>x.n!==rm.dataset.n); tick(); renderStarSheet(); return; }
+  const up=e.target.closest('.ss-up'), dn=e.target.closest('.ss-down');
+  if(up||dn){
+    e.stopPropagation();
+    const nm=(up||dn).dataset.n;
+    const d=S.decisions.find(x=>x.card.name===nm);
+    if(d){ d.v=up?'star':'yes'; refit(); tick(); renderStarSheet(); }
+    return;
+  }
+});
+$('#ss-copy').onclick=async()=>{
+  const st=S.decisions.filter(d=>d.v==='star').map(d=>d.card);
+  const ys=S.decisions.filter(d=>d.v==='yes').map(d=>d.card);
+  const t=`【约面清单 · ${$('#jobtag').textContent.split('　')[0]}】\n\n直接约面：\n`
+    +st.map((c,i)=>`${i+1}. ${c.name} · ${c.school} · ${c.exp1.co} · ${(S.starStatus||{})[c.name]||'待约'}${(S.starNotes||{})[c.name]?` —— ${S.starNotes[c.name]}`:''}`).join('\n')
+    +(ys.length?`\n\n可以聊：\n`+ys.map(c=>`· ${c.name} · ${c.school} · ${c.exp1.co}`).join('\n'):'');
+  try{ await navigator.clipboard.writeText(t); $('#ss-copy').textContent='已复制';
+       setTimeout(()=>$('#ss-copy').textContent='复制',1500); }catch(_){}
+};
+$('#ss-close').onclick=()=>$('#ssheet').classList.remove('on');
+$('#ssheet').addEventListener('pointerdown',e=>{ if(e.target.id==='ssheet') $('#ssheet').classList.remove('on'); });
+$('#sslist').addEventListener('click',e=>{
+  const r=e.target.closest('[data-ssn]'); if(!r) return;
+  const c=S.decisions.find(d=>d.card.name===r.dataset.ssn)?.card;
+  if(c){ $('#ssheet').classList.remove('on'); openSheet(c); }
+});
+$('#backbtn').onclick=()=>show('landing');
+$('#b-no').onclick=()=>decide('no');
+$('#b-yes').onclick=()=>decide('yes');
+$('#b-star').onclick=()=>decide('star');
+$('#b-undo').onclick=undo;
+$('#donebtn').onclick=()=>{render();show('result');window.scrollTo(0,0)};
+$('#histlink').onclick=()=>{ $('#filterbtn').click(); setTimeout(()=>$('#memhist')?.scrollIntoView({behavior:'smooth',block:'center'}),350); };
+function widenPool(){
+  const seen=new Set([...S.decisions.map(d=>d.card.name),...S.stack.map(x=>x.card.name)]);
+  S.F=blankF(); S.Fdraft=blankF();
+  const raw=poolDocs();
+  const all=raw.length ? raw.map((d,i)=>({...cardFromCV(d.text,S.tk,i), src:d.src})) : S.deck0;
+  const fresh=all.filter(c=>!seen.has(c.name));
+  if(fresh.length<=S.pool.length){ $('#lwhy').textContent='库里没有更多本岗位的简历了。'; $('#lwhy').style.display='block'; setTimeout(()=>$('#lwhy').style.display='none',4000); return; }
+  S.deck=[...S.decisions.map(d=>d.card),...S.stack.map(x=>x.card),...fresh];
+  S.pool=fresh;
+  if(REAL()) $('#jobtag').textContent=$('#jobtag').textContent.replace(/　\d+\/\d+$/,`　${S.deck.length}/${S.realTotal}`);
+  fill(); tick();
+  $('#lwhy').textContent=`已扩大到本岗位全部 ${S.deck.length} 份。`; $('#lwhy').style.display='block';
+  setTimeout(()=>$('#lwhy').style.display='none',4000);
+}
+document.addEventListener('click',e=>{ if(e.target.id==='lwiden') widenPool(); });
+$('#emptywiden').onclick=widenPool;
+$('#emptydone').onclick=()=>{render();show('result');window.scrollTo(0,0)};
+addEventListener('keydown',e=>{
+  if(!$('#deck').classList.contains('on')) return;
+  if(e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT'||e.target.tagName==='SELECT'||e.target.isContentEditable) return;
+  if($('#sheet').classList.contains('on')){ if(e.key==='Escape'||e.key==='Enter'){e.preventDefault();$('#sheet').classList.remove('on')} return; }
+  const m={ArrowLeft:'no',ArrowRight:'yes',ArrowUp:'star'}[e.key];
+  if(m){e.preventDefault();decide(m)}
+  else if(e.key.toLowerCase()==='z'){e.preventDefault();undo()}
+  else if(e.key==='Enter'){e.preventDefault(); if(S.stack.length) openSheet(S.stack[0].card)}
+});
+tick();
+</script>
+
+</body>
+</html>
