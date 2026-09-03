@@ -1447,7 +1447,7 @@ function tick(){
   $('#donebtn').disabled = !unlocked;
   $('#donebtn').classList.toggle('ready', unlocked);
   const nStar=S.decisions.filter(d=>d.v==='star').length+(S.importedStars||[]).length;
-  const nYes=S.decisions.filter(d=>d.v==='yes').length;
+  const nYes=S.decisions.filter(d=>d.v==='yes').length+(S.importedYes||[]).length;
   $('#starcount').textContent = nStar+nYes ? (nStar?`✦${nStar}`:'')+(nStar&&nYes?' · ':'')+(nYes?`${nYes} 可聊`:'') : '0';
   learnUI();
 }
@@ -3022,17 +3022,33 @@ $('#presets').addEventListener('click',e=>{
       $('#jsbody').contentEditable='false';
       $('#js-tip').style.display='none';
       $('#jsbody').textContent=ps.roster.map(r=>`${r.v==='star'?'✦':'✓'} ${r.n} · ${r.sc} · ${r.co}`).join('\n');
-      const st=ps.roster.filter(r=>r.v==='star');
+      const st=ps.roster.filter(r=>r.v==='star'), ys=ps.roster.filter(r=>r.v==='yes');
       $('#js-import').style.display='block';
-      $('#js-import').onclick=()=>{
-        if(!st.length){ $('#js-import').textContent='名单里没有 ✦';
-          setTimeout(()=>$('#js-import').textContent='导入待约',1200); return; }
-        S.importedStars=S.importedStars||[];
+      const doImp=(rows,intoYes)=>{
+        S.importedStars=S.importedStars||[]; S.importedYes=S.importedYes||[];
         let add=0;
-        for(const r of st) if(!S.importedStars.some(x=>x.n===r.n)){ S.importedStars.push(r); add++; }
+        for(const r of rows){
+          const tgt=(r.v==='yes'&&intoYes)?S.importedYes:S.importedStars;
+          if(!S.importedStars.some(x=>x.n===r.n)&&!S.importedYes.some(x=>x.n===r.n)){ tgt.push(r); add++; }
+        }
         tick&&tick();
         $('#js-import').textContent=add?`已导入 ${add} 人`:'都已在清单里';
         setTimeout(()=>{ $('#js-import').textContent='导入待约'; $('#jsheet').classList.remove('on','mid'); },900);
+      };
+      $('#js-import').textContent='导入待约';
+      $('#js-import').onclick=()=>{
+        if(!ps.roster.length){ $('#js-import').textContent='名单是空的';
+          setTimeout(()=>$('#js-import').textContent='导入待约',1200); return; }
+        if(!ys.length){ doImp(st,false); return; }
+        if(!st.length){ doImp(ys,true); return; }
+        const box=$('#js-import');
+        box.replaceWith(...(()=>{
+          const b1=document.createElement('button'); b1.className='tbtn'; b1.id='js-import'; b1.textContent=`只 ✦ ${st.length}`;
+          const b2=document.createElement('button'); b2.className='tbtn'; b2.textContent=`含可聊 ${st.length+ys.length}`;
+          b1.onclick=()=>{ b2.remove(); doImp(st,false); };
+          b2.onclick=()=>{ b2.remove(); doImp([...st,...ys],true); };
+          return [b1,b2];
+        })());
       };
       $('#jsheet').classList.add('on','mid');
     }
@@ -3757,7 +3773,10 @@ function renderStarSheet(){
     ...S.decisions.filter(d=>d.v==='star').map(d=>d.card),
     ...(S.importedStars||[]).map(r=>({name:r.n, school:r.sc, exp1:{co:r.co}, _imp:true}))
   ];
-  const yes=S.decisions.filter(d=>d.v==='yes').map(d=>d.card);
+  const yes=[
+    ...S.decisions.filter(d=>d.v==='yes').map(d=>d.card),
+    ...(S.importedYes||[]).map(r=>({name:r.n, school:r.sc, exp1:{co:r.co}, _imp:true}))
+  ];
   S.starStatus=S.starStatus||{};
   const starRow=c=>{
     const st=S.starStatus[c.name]||'待约';
@@ -3786,20 +3805,28 @@ $('#sslist').addEventListener('click',e=>{
   const st=e.target.closest('.ss-set');
   if(st){ e.stopPropagation(); (S.starStatus=S.starStatus||{})[st.dataset.n]=st.dataset.st; renderStarSheet(); return; }
   const rm=e.target.closest('.ss-rm');
-  if(rm){ e.stopPropagation(); S.importedStars=(S.importedStars||[]).filter(x=>x.n!==rm.dataset.n); tick(); renderStarSheet(); return; }
+  if(rm){ e.stopPropagation();
+    S.importedStars=(S.importedStars||[]).filter(x=>x.n!==rm.dataset.n);
+    S.importedYes=(S.importedYes||[]).filter(x=>x.n!==rm.dataset.n);
+    tick(); renderStarSheet(); return; }
   const up=e.target.closest('.ss-up'), dn=e.target.closest('.ss-down');
   if(up||dn){
     e.stopPropagation();
     const nm=(up||dn).dataset.n;
     const d=S.decisions.find(x=>x.card.name===nm);
-    if(d){ d.v=up?'star':'yes'; refit(); tick(); renderStarSheet(); }
+    if(d){ d.v=up?'star':'yes'; refit(); tick(); renderStarSheet(); return; }
+    const iy=(S.importedYes||[]).find(x=>x.n===nm), is2=(S.importedStars||[]).find(x=>x.n===nm);
+    if(up&&iy){ S.importedYes=S.importedYes.filter(x=>x.n!==nm); S.importedStars=[...(S.importedStars||[]),iy]; }
+    if(dn&&is2){ S.importedStars=S.importedStars.filter(x=>x.n!==nm); S.importedYes=[...(S.importedYes||[]),is2]; }
+    tick(); renderStarSheet();
     return;
   }
 });
 $('#ss-copy').onclick=async()=>{
   const st=[...S.decisions.filter(d=>d.v==='star').map(d=>d.card),
             ...(S.importedStars||[]).map(r=>({name:r.n, school:r.sc, exp1:{co:r.co}}))];
-  const ys=S.decisions.filter(d=>d.v==='yes').map(d=>d.card);
+  const ys=[...S.decisions.filter(d=>d.v==='yes').map(d=>d.card),
+            ...(S.importedYes||[]).map(r=>({name:r.n, school:r.sc, exp1:{co:r.co}}))];
   const t=`【约面清单 · ${$('#jobtag').textContent.split('　')[0]}】\n\n直接约面：\n`
     +st.map((c,i)=>`${i+1}. ${c.name} · ${c.school} · ${c.exp1.co} · ${(S.starStatus||{})[c.name]||'待约'}${(S.starNotes||{})[c.name]?` —— ${S.starNotes[c.name]}`:''}`).join('\n')
     +(ys.length?`\n\n可以聊：\n`+ys.map(c=>`· ${c.name} · ${c.school} · ${c.exp1.co}`).join('\n'):'');
