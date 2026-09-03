@@ -1460,7 +1460,7 @@ function tick(){
   // 解锁 ⇔ 真的有画像文字可看（存在能写进画像的显著结论）
   const conv = n>=10 && balanced() && (hitRate(10)?.r||0)>=.75;
   const unlocked = ready0;
-  $('#donebtn').disabled = !unlocked;
+  $('#donebtn').disabled = false;                     // 管理页随时能进，成立与否由页内分级说话
   $('#donebtn').classList.toggle('ready', unlocked);
   const nStar=S.decisions.filter(d=>d.v==='star').length+(S.importedStars||[]).length;
   const nYes=S.decisions.filter(d=>d.v==='yes').length+(S.importedYes||[]).length;
@@ -2001,6 +2001,9 @@ function evid(l,A){
 const ZMIN=2.8;   // 标定见 CALIBRATION.md：假阳性 ~10%，检出力 ~78%
 function render(){
   const A=analyze(true), dims=Object.values(A.out).sort((a,b)=>(b.z??-9)-(a.z??-9));
+  const rjt = S.pickedJobs&&S.pickedJobs.length
+    ? S.pickedJobs[0].t.split(/ - /)[0] + (S.pickedJobs.length>1?` 等 ${S.pickedJobs.length} 岗`:'')
+    : `${S.role} · ${S.year}`;
   const strong=[],plus=[],out=[];
   // 双重判据：偏效应够大 + 置换检验下不容易碰巧出现
   // 双重判据。这组阈值是在 28 次「随机乱滑」和 30 次「已知真偏好」的模拟上标定的：
@@ -2022,7 +2025,8 @@ function render(){
     }
   }
   const bal=Math.min(A.pos,A.neg);
-  const conf = bal<=Math.max(2,A.n*0.12)?[`几乎全${A.pos>A.neg?'要':'否'}了 · 正负太不平衡，结论不成立`,'var(--pass)']
+  const conf = A.n<10?['还在积累','var(--ink3)']
+             : bal<=Math.max(2,A.n*0.12)?[`几乎全${A.pos>A.neg?'要':'否'}了 · 正负太不平衡，结论不成立`,'var(--pass)']
              : A.n<12?['样本太少，先滑到 12 张','var(--pass)']
              : A.n<20?['低置信 · 样本还少','var(--ink)']
              : A.n<30?['中等置信','var(--pick)']:['高置信','var(--pick)'];
@@ -2076,7 +2080,7 @@ function render(){
 
   if(!strong.length&&!plus.length&&!out.length){
     $('#rwrap').innerHTML=`
-      <h1 class="rtitle">${S.role} · ${S.year}<button class="tbtn rstar" style="float:right;font-size:13px">约面清单 ${$('#starcount').textContent}</button></h1>
+      <h1 class="rtitle" style="font-size:clamp(20px,4.5vw,30px)">${rjt}<button class="tbtn rstar" style="float:right;font-size:13px">约面清单 ${$('#starcount').textContent}</button></h1>
       <div class="conf"><span class="dot" style="background:${conf[1]}"></span>${conf[0]} · 判断了 ${A.n} 人（${A.pos} 正 / ${A.neg} 负）</div>
       <div class="rcard"><div class="ev" style="font-size:14px">还没滑出稳定偏好。</div></div>
       <div class="rowbtns">
@@ -2095,7 +2099,7 @@ function render(){
     <div class="bar"><i style="width:${(x.l.rate*100).toFixed(0)}%;background:${color}"></i></div></div>`;
 
   $('#rwrap').innerHTML=`
-    <h1 class="rtitle">${S.role} · ${S.year}<button class="tbtn rstar" style="float:right;font-size:13px">约面清单 ${$('#starcount').textContent}</button></h1>
+    <h1 class="rtitle" style="font-size:clamp(20px,4.5vw,30px)">${rjt}<button class="tbtn rstar" style="float:right;font-size:13px">约面清单 ${$('#starcount').textContent}</button></h1>
     <div class="conf"><span class="dot" style="background:${conf[1]}"></span>${conf[0]} · 判断了 ${A.n} 人（${A.pos} 正 / ${A.neg} 负）</div>
 
     ${hardHTML}
@@ -3601,7 +3605,8 @@ let jdT; $('#jd').addEventListener('input',()=>{
   if($('#nmnear')&&$('#jd').value.trim()) $('#nmnear').style.display='none';
   clearTimeout(jdT); jdT=setTimeout(parseJD,400);
 });
-let rsT; $('#rolesearch').addEventListener('input',e=>{
+let rsT, nmT2; $('#rolesearch').addEventListener('input',e=>{
+  clearTimeout(nmT2);
   clearTimeout(rsT);
   rsT=setTimeout(()=>{
     const t=e.target.value.trim();
@@ -3619,13 +3624,14 @@ let rsT; $('#rolesearch').addEventListener('input',e=>{
             <div class="jr-m">${dept?dept+' · ':''}${j.city} · ${st2} · 已投递 <i class="jrn">${rowN(j)}</i></div>
           </button>`;
         }).join('')
-      : (()=>{
-          // 库里没有：两条路并列 + 相邻岗建议
-
-          const det0=detectSel.__probe ? null : null;
-          const guessRole=(()=>{ const d={}; const bak={role:S.role,sub:S.sub,year:S.year,tk:S.tk};
+      : '';
+    if(!hits.length && t.length>=2) nmT2=setTimeout(()=>{
+      if($('#rolesearch').value.trim()!==t) return;
+      $('#joblist').innerHTML = (()=>{
+          // 库里没有：两条路并列；只有识别出职能才给相邻岗建议
+          const guessRole=(()=>{ const bak={role:S.role,sub:S.sub,year:S.year,tk:S.tk};
             const r=detectSel(t); Object.assign(S,bak); renderSub(); return r.role?S.role:null; })();
-          const near=JOBLIB.filter(j=>!guessRole||titleRoleOf(j.t)===guessRole).slice(0,3);
+          const near=guessRole?JOBLIB.filter(j=>titleRoleOf(j.t)===guessRole).slice(0,3):[];
           return `<div class="ev" style="margin:10px 0 8px">库里没有「${t.slice(0,16)}」</div>
             <div style="display:flex;gap:8px">
               <button class="tbtn" id="nojd">写 / 贴 JD</button>
@@ -3643,7 +3649,6 @@ let rsT; $('#rolesearch').addEventListener('input',e=>{
                   <div class="nm-jd" style="display:none"></div>
                 </div>`;}).join('')+'</div>':''}`;
         })();
-    if(!hits.length){
       const tabJD=()=>{
         $('#park').appendChild($('#selfield')); $('#selfield').style.display='none';
         $('#nmslot').appendChild($('#jdfield'));
@@ -3671,7 +3676,7 @@ let rsT; $('#rolesearch').addEventListener('input',e=>{
         $('#jd').value=JDS[+b.dataset.ji][1]; parseJD();
         $('#jd').scrollIntoView({behavior:'smooth',block:'center'});
       });
-    }
+    },800);
   },250);
 });
 $('#joblist').addEventListener('click',e=>{
